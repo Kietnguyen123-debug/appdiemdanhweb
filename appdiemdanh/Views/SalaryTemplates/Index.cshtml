@@ -1,0 +1,66 @@
+@model AppDiemDanh.ViewModels.SalaryTemplateIndexViewModel
+@{
+    ViewData["Title"] = "Mẫu lương khung";
+}
+
+<div class="salary-module">
+    <div class="salary-page-header">
+        <div>
+            <p class="eyebrow">LƯƠNG & PHÚC LỢI</p>
+            <h1>Mẫu lương khung</h1>
+            <p class="muted">Quản lý mẫu lương theo nhóm vị trí và các thành phần áp dụng.</p>
+        </div>
+        <button class="btn btn-primary" type="button" data-open-template-modal>+ Tạo mẫu lương</button>
+    </div>
+
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+    <div class="card table-wrap">
+        <table class="data-table">
+            <thead><tr><th>Mã mẫu</th><th>Tên mẫu</th><th>Nhóm vị trí</th><th>Số thành phần</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var template in Model.Templates)
+            {
+                <tr>
+                    <td><strong>@template.Code</strong></td>
+                    <td>@template.Name</td>
+                    <td>@(template.PositionGroup ?? "Chưa phân nhóm")</td>
+                    <td>@template.ComponentCount</td>
+                    <td><a class="btn btn-secondary" asp-action="Detail" asp-route-id="@template.Id">Cấu hình</a></td>
+                </tr>
+            }
+            @if (Model.Templates.Count == 0)
+            {
+                <tr><td colspan="5" class="empty">Chưa có mẫu lương khung.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="salary-modal" id="salary-template-modal" hidden>
+    <div class="salary-modal-backdrop" data-close-template-modal></div>
+    <form method="post" asp-action="Create" class="card salary-modal-card">
+        @Html.AntiForgeryToken()
+        <div class="section-head">
+            <h3>Tạo mẫu lương</h3>
+            <button type="button" class="btn btn-secondary" data-close-template-modal>Đóng</button>
+        </div>
+        <div class="grid grid-3">
+            <label>Mã mẫu<input class="form-control" name="Code" required maxlength="80" /></label>
+            <label>Tên mẫu<input class="form-control" name="Name" required maxlength="200" /></label>
+            <label>Nhóm vị trí<input class="form-control" name="PositionGroup" maxlength="120" /></label>
+        </div>
+        <button class="btn btn-primary" type="submit">Lưu mẫu lương</button>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+(() => {
+    const modal = document.getElementById('salary-template-modal');
+    document.querySelector('[data-open-template-modal]')?.addEventListener('click', () => modal.hidden = false);
+    document.querySelectorAll('[data-close-template-modal]').forEach(button =>
+        button.addEventListener('click', () => modal.hidden = true));
+})();
+</script>
+}

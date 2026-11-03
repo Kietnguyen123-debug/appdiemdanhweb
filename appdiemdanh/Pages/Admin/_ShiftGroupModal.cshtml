@@ -1,0 +1,30 @@
+@model AppDiemDanh.Pages.Admin.ShiftGroupsModel.ShiftGroupModalViewModel
+@{
+    var departments = Model.Employees.Select(x => x.DepartmentName).Distinct().OrderBy(x => x).ToList();
+    var branches = Model.Employees.Select(x => x.BranchName).Distinct().OrderBy(x => x).ToList();
+}
+<div class="salary-modal" data-shift-group-modal>
+    <div class="salary-modal-backdrop"></div>
+    <div class="salary-modal-card" style="width:min(1100px,100%)">
+        <div class="section-head"><div><p class="eyebrow">NHÓM PHÂN CA</p><h3>@(Model.Id.HasValue ? "Cấu hình nhóm phân ca" : "Tạo nhóm phân ca")</h3></div><button class="btn btn-secondary" type="button" data-close-modal>Đóng</button></div>
+        <form id="shift-group-form">
+            <input type="hidden" name="id" value="@Model.Id" />
+            <div class="grid grid-3">
+                <div><label for="shift-group-code">Mã nhóm *</label><input class="form-control" id="shift-group-code" name="code" maxlength="80" value="@Model.Code" required placeholder="GROUP_NIGHT_SHIFT" /></div>
+                <div><label for="shift-group-name">Tên nhóm *</label><input class="form-control" id="shift-group-name" name="name" maxlength="200" value="@Model.Name" required placeholder="Nhóm Ca Đêm - Khối Sản Xuất" /></div>
+                <div><label for="shift-group-description">Mô tả</label><input class="form-control" id="shift-group-description" name="description" maxlength="1000" value="@Model.Description" placeholder="Mô tả ngắn về nhóm" /></div>
+            </div>
+            <div class="section-head" style="margin-top:24px"><div><h3>Chọn nhân viên vào nhóm</h3><p class="muted">Nhân viên có thể đang thuộc nhóm khác; thông tin cảnh báo được hiển thị bên dưới.</p></div></div>
+            <div class="grid grid-3" style="margin-bottom:14px"><input class="form-control" data-employee-search placeholder="Lọc theo tên/mã nhân viên" /><select class="form-control" data-employee-department><option value="">Tất cả phòng ban</option>@foreach (var item in departments) { <option value="@item">@item</option> }</select><select class="form-control" data-employee-branch><option value="">Tất cả chi nhánh</option>@foreach (var item in branches) { <option value="@item">@item</option> }</select></div>
+            <div class="table-wrap" style="max-height:380px"><table class="data-table"><thead><tr><th><input type="checkbox" data-select-all-employees aria-label="Chọn tất cả" /></th><th>Mã NV</th><th>Tên nhân viên</th><th>Phòng ban</th><th>Chi nhánh</th><th>Nhóm ca hiện tại</th></tr></thead><tbody>
+            @foreach (var employee in Model.Employees)
+            {
+                var search = $"{employee.EmployeeCode} {employee.FullName}".ToLowerInvariant();
+                <tr data-employee-row data-search="@search" data-department="@employee.DepartmentName" data-branch="@employee.BranchName"><td><input type="checkbox" name="employeeIds" value="@employee.Id" checked="@employee.IsChecked" /></td><td><strong>@employee.EmployeeCode</strong></td><td>@employee.FullName</td><td>@employee.DepartmentName</td><td>@employee.BranchName</td><td>@if (employee.CurrentGroups.Count == 0) { <span class="muted">Chưa thuộc nhóm khác</span> } else { <span class="badge badge-warning">@string.Join(", ", employee.CurrentGroups)</span> }</td></tr>
+            }
+            @if (Model.Employees.Count == 0) { <tr><td colspan="6" class="muted">Không có nhân viên đang hoạt động.</td></tr> }
+            </tbody></table></div>
+            <div class="salary-modal-actions"><button class="btn btn-secondary" type="button" data-close-modal>Hủy</button><button class="btn btn-primary" type="submit">Lưu nhóm</button></div>
+        </form>
+    </div>
+</div>

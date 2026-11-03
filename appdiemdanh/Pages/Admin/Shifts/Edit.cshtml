@@ -1,0 +1,6 @@
+@page "{id:int}"
+@model AppDiemDanh.Pages.Admin.Shifts.EditModel
+@{ ViewData["Title"] = "Sửa ca làm việc"; }
+<div class="section-head"><div><p class="eyebrow">LỊCH LÀM VIỆC</p><h1>Sửa ca làm việc</h1></div><a class="btn btn-secondary" asp-page="/Admin/Shifts">← Về quản lý ca</a></div>
+@if(Model.ErrorMessage != null){<div class="alert alert-danger">@Model.ErrorMessage</div>}
+<div class="card"><form method="post" class="grid grid-2"><div><label>Mã ca</label><input class="form-control" asp-for="Input.ShiftCode" required maxlength="50" /></div><div><label>Tên ca</label><input class="form-control" asp-for="Input.ShiftName" required maxlength="200" /></div><div><label>Giờ bắt đầu</label><input class="form-control" type="time" asp-for="Input.StartTime" min="00:00" max="23:59" required /></div><div><label>Giờ kết thúc</label><input class="form-control" type="time" asp-for="Input.EndTime" min="00:00" max="23:59" required /></div><div><label><input asp-for="Input.IsActive" /> Đang sử dụng</label></div><div class="toolbar" style="align-items:end"><button class="btn btn-primary">Lưu thay đổi</button><a class="btn btn-secondary" asp-page="/Admin/Shifts">Hủy</a></div></form></div>

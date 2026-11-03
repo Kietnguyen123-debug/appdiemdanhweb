@@ -1,0 +1,377 @@
+@page
+@model AppDiemDanh.Pages.Admin.Shifts.ManagementModel
+@using System.Globalization
+@{
+    ViewData["Title"] = "Quản lý phân ca";
+    var days = Enumerable.Range(0, DateTime.DaysInMonth(Model.Month.Year, Model.Month.Month)).Select(i => Model.Month.AddDays(i)).ToList();
+}
+<div class="section-head">
+    <div><p class="eyebrow">HYBRID ROSTER</p><h1>Quản lý phân ca</h1><p class="muted">Lịch nhóm là mặc định; chỉ lưu record khi có ngoại lệ cá nhân.</p></div>
+    <div class="toolbar"><a class="btn btn-secondary" asp-page="/Admin/Shifts">Danh mục ca</a><a class="btn btn-primary" asp-page="/Admin/Shifts/Management" asp-route-year="@Model.Month.AddMonths(-1).Year" asp-route-month="@Model.Month.AddMonths(-1).Month" asp-route-view="@Model.ViewMode">←</a><strong>@Model.Month.ToString("MM/yyyy")</strong><a class="btn btn-primary" asp-page="/Admin/Shifts/Management" asp-route-year="@Model.Month.AddMonths(1).Year" asp-route-month="@Model.Month.AddMonths(1).Month" asp-route-view="@Model.ViewMode">→</a></div>
+</div>
+@if (Model.Message != null)
+{
+    <div class="alert @(Model.Success ? "alert-success" : "alert-danger")">@Model.Message</div>
+}
+<div class="roster-tabs"><a class="@(Model.ViewMode == "groups" ? "active" : "")" asp-page="/Admin/Shifts/Management" asp-route-year="@Model.Month.Year" asp-route-month="@Model.Month.Month" asp-route-view="groups">Tổng quan theo nhóm</a><a class="@(Model.ViewMode == "employees" ? "active" : "")" asp-page="/Admin/Shifts/Management" asp-route-year="@Model.Month.Year" asp-route-month="@Model.Month.Month" asp-route-view="employees">Chi tiết nhân viên</a><a class="@(Model.ViewMode == "shift-groups" ? "active" : "")" asp-page="/Admin/Shifts/Management" asp-route-year="@Model.Month.Year" asp-route-month="@Model.Month.Month" asp-route-view="shift-groups">Nhóm phân ca</a></div>
+
+@if (Model.ViewMode == "groups")
+{
+    <div class="card">
+        <div class="section-head"><div><h3>Group roster view</h3><p class="muted">Gán một ca cho cả nhóm theo khoảng ngày. Bấm vào ca đã gán để khôi phục/xóa.</p></div></div>
+        <form method="post" asp-page-handler="GroupAssign" class="grid grid-4 roster-toolbar">
+            <select class="form-control" name="workGroupId" required>
+                <option value="">Chọn nhóm</option>
+                @foreach (var group in Model.Groups)
+                {
+                    <option value="@group.Id">@group.Code - @group.Name</option>
+                }
+            </select>
+            <select class="form-control" name="shiftId" required>
+                <option value="">Chọn ca</option>
+                @foreach (var shift in Model.Shifts)
+                {
+                    <option value="@shift.Id">@shift.ShiftCode - @shift.ShiftName</option>
+                }
+            </select>
+            <input class="form-control" type="date" name="from" value="@Model.Month.ToString("yyyy-MM-dd")" required />
+            <input class="form-control" type="date" name="to" value="@Model.Month.AddMonths(1).AddDays(-1).ToString("yyyy-MM-dd")" required />
+            <button class="btn btn-primary" type="submit">Áp dụng cho nhóm</button>
+        </form>
+        <div class="roster-scroll">
+            <table class="roster-grid">
+                <thead>
+                    <tr>
+                        <th>Nhóm/Kíp</th>
+                        @foreach (var day in days)
+                        {
+                            <th>@day.ToString("dd")<small>@day.ToString("ddd", CultureInfo.GetCultureInfo("vi-VN"))</small></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var group in Model.Groups)
+                    {
+                        <tr>
+                            <th><strong>@group.Name</strong><small>@group.Code</small></th>
+                            @foreach (var day in days)
+                            {
+                                var cell = Model.GroupSchedules.FirstOrDefault(x => x.WorkGroupId == group.Id && x.WorkDate == day);
+                                <td class="@(cell == null ? "empty-cell" : "inherited-cell")">
+                                    @if (cell != null)
+                                    {
+                                        <form method="post" asp-page-handler="RevertGroupSchedule" style="display:inline;" onsubmit="return confirm('Khôi phục lịch nhóm ngày @day.ToString("dd/MM") về mặc định?');">
+                                            <input type="hidden" name="workGroupId" value="@group.Id" />
+                                            <input type="hidden" name="workDate" value="@day.ToString("yyyy-MM-dd")" />
+                                            <input type="hidden" name="year" value="@Model.Month.Year" />
+                                            <input type="hidden" name="month" value="@Model.Month.Month" />
+                                            <button type="submit" class="roster-cell" style="cursor:pointer; border:none; background:transparent;" title="Bấm để xóa ca nhóm ngày này">
+                                                @(cell.Shift?.ShiftCode ?? "—") ↺
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <span>—</span>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else if (Model.ViewMode == "employees")
+{
+    <div class="card">
+        <div class="section-head"><div><h3>Employee roster & override</h3><p class="muted"><span class="legend-dot inherited-dot"></span> Theo nhóm &nbsp; <span class="legend-dot exception-dot"></span> Ngoại lệ cá nhân</p></div></div>
+        <div class="roster-scroll">
+            <table class="roster-grid employee-roster">
+                <thead>
+                    <tr>
+                        <th>Nhân viên / Nhóm</th>
+                        @foreach (var day in days)
+                        {
+                            <th>@day.ToString("dd")<small>@day.ToString("ddd", CultureInfo.GetCultureInfo("vi-VN"))</small></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var employee in Model.Roster.Employees)
+                    {
+                        <tr>
+                            <th><strong>@employee.EmployeeCode - @employee.EmployeeName</strong><small>@(employee.WorkGroupName ?? "Chưa thuộc nhóm")</small></th>
+                            @foreach (var cell in employee.Days)
+                            {
+                                var isIndividual = cell.Source is "Exception" or "Employee";
+                                <td class="@(isIndividual ? "exception-cell" : "inherited-cell")" title="@(isIndividual ? "Lịch cá nhân: bấm để chỉnh hoặc khôi phục về lịch nhóm" : "Theo lịch nhóm chung")">
+                                    <button type="button" class="roster-cell"
+                                            data-open-override
+                                            data-employee="@employee.EmployeeId"
+                                            data-date="@cell.WorkDate.ToString("yyyy-MM-dd")"
+                                            data-exception="@(cell.ExceptionId?.ToString() ?? "")"
+                                            data-source="@cell.Source">
+                                        @(cell.ShiftCode ?? "OFF")@(isIndividual ? " !" : "")
+                                    </button>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MODAL GHI ĐÈ CA (OVERLAY ĐỘC LẬP & KHÔNG TRÀN NÚT) -->
+    <div id="overrideModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.45); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:12px; width:90%; max-width:480px; padding:24px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); position:relative; max-height:90vh; overflow-y:auto; box-sizing:border-box;">
+
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid #f1f5f9; padding-bottom:12px; margin-bottom:16px;">
+                <div>
+                    <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:#0f172a;">Ghi đè ca cá nhân</h3>
+                    <p id="override-caption" style="margin:4px 0 0 0; font-size:0.875rem; color:#64748b; font-weight:500;"></p>
+                </div>
+                <button type="button" data-close-override style="border:none; background:none; font-size:1.4rem; cursor:pointer; color:#94a3b8; line-height:1; padding:0 4px;">✕</button>
+            </div>
+
+            <form id="override-form" method="post" asp-page-handler="Override">
+                <input type="hidden" name="employeeId" id="override-employee" />
+                <input type="hidden" name="workDate" id="override-date" />
+                <input type="hidden" name="year" value="@Model.Month.Year" />
+                <input type="hidden" name="month" value="@Model.Month.Month" />
+
+                <div class="form-group mb-3">
+                    <label class="form-label" style="font-weight:600; margin-bottom:6px; display:block; color:#334155;">Ca mới</label>
+                    <select class="form-control" name="overrideShiftId" id="override-shift-select" required style="width:100%; height:42px;">
+                        <option value="">Chọn ca</option>
+                        @foreach (var shift in Model.Shifts)
+                        {
+                            <option value="@shift.Id">@shift.ShiftCode - @shift.ShiftName</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label class="form-label" style="font-weight:600; margin-bottom:6px; display:block; color:#334155;">Lý do ghi đè</label>
+                    <textarea class="form-control" name="reason" id="override-reason-text" maxlength="1000" required placeholder="Ví dụ: Đổi ca trực hộ..." style="width:100%; height:80px; resize:vertical;"></textarea>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px; padding-top:12px; border-top:1px solid #f8fafc;">
+                    <button type="button" class="btn btn-secondary" data-close-override>Đóng</button>
+                    <button type="submit" class="btn btn-primary">Lưu ngoại lệ</button>
+                </div>
+            </form>
+
+            <div id="revert-container" style="margin-top:10px; display:none;">
+                <form id="revert-form" method="post" asp-page-handler="Revert">
+                    <input type="hidden" name="exceptionId" id="revert-id" />
+                    <input type="hidden" name="employeeId" id="revert-employee" />
+                    <input type="hidden" name="workDate" id="revert-date" />
+                    <input type="hidden" name="year" value="@Model.Month.Year" />
+                    <input type="hidden" name="month" value="@Model.Month.Month" />
+                    <button type="submit" class="btn btn-danger" style="width:100%; text-align:center; justify-content:center;">
+                        ↺ Khôi phục theo lịch nhóm chung
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="section-head"><div><h3>Nhóm phân ca</h3><p class="muted">Cấu hình nhóm nhân viên được sử dụng trong quy trình phân ca.</p></div><button class="btn btn-primary" type="button" data-open-shift-group>+ Tạo nhóm phân ca</button></div>
+    <div id="shift-group-toast" class="alert" hidden></div>
+    <div class="card" id="shift-group-list">@await Html.PartialAsync("~/Pages/Admin/_ShiftGroupList.cshtml", Model.ShiftGroups)</div>
+    <div id="shift-group-modal-host"></div>
+    <form id="shift-group-antiforgery" method="post">@Html.AntiForgeryToken()</form>
+}
+
+@section Scripts {
+    <script>
+        function closeOverrideModal() {
+            const modal = document.getElementById('overrideModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        document.addEventListener('click', e => {
+            const btn = e.target.closest('[data-open-override]');
+            if (btn) {
+                const modal = document.getElementById('overrideModal');
+                if (!modal) return;
+
+                const empId = btn.dataset.employee || '';
+                const dateStr = btn.dataset.date || '';
+                const exceptionId = btn.dataset.exception || '';
+                const source = btn.dataset.source || '';
+
+                document.getElementById('override-employee').value = empId;
+                document.getElementById('override-date').value = dateStr;
+                document.getElementById('override-caption').textContent = `Ngày ${dateStr} • Nhân viên #${empId}`;
+
+                document.getElementById('override-shift-select').value = '';
+                document.getElementById('override-reason-text').value = '';
+
+                document.getElementById('revert-id').value = exceptionId;
+                document.getElementById('revert-employee').value = empId;
+                document.getElementById('revert-date').value = dateStr;
+
+                const revertContainer = document.getElementById('revert-container');
+                const isIndividual = source === 'Exception' || source === 'Employee' || (exceptionId && exceptionId !== '0' && exceptionId !== 'null' && exceptionId.trim() !== '');
+
+                if (revertContainer) {
+                    revertContainer.style.display = isIndividual ? 'block' : 'none';
+                }
+
+                modal.style.display = 'flex';
+                return;
+            }
+
+            const modal = document.getElementById('overrideModal');
+            if (modal && modal.style.display === 'flex') {
+                if (e.target === modal || e.target.closest('[data-close-override]')) {
+                    closeOverrideModal();
+                }
+            }
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeOverrideModal();
+        });
+
+        (() => {
+            const pageUrl = '@Url.Page("/Admin/Shifts/Management")';
+            let scrollTop = 0;
+
+            const getHost = () => document.getElementById('shift-group-modal-host');
+            const getList = () => document.getElementById('shift-group-list');
+            const getToast = () => document.getElementById('shift-group-toast');
+            const getToken = () => document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+
+            const notify = (message, success) => {
+                const toast = getToast();
+                if (!toast) return;
+                toast.textContent = message;
+                toast.className = `alert ${success ? 'alert-success' : 'alert-danger'}`;
+                toast.hidden = false;
+                setTimeout(() => toast.hidden = true, 3500);
+            };
+
+            const close = () => {
+                const host = getHost();
+                if (host) host.innerHTML = '';
+                document.body.classList.remove('modal-open');
+            };
+
+            const reload = async () => {
+                const list = getList();
+                if (!list) return;
+                const r = await fetch(`${pageUrl}?handler=ShiftGroupList`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                if (!r.ok) throw Error('Không thể tải danh sách nhóm.');
+                list.innerHTML = await r.text();
+            };
+
+            const open = async id => {
+                const host = getHost();
+                if (!host) return;
+                scrollTop = window.scrollY;
+                const r = await fetch(`${pageUrl}?handler=ShiftGroupModal${id ? `&id=${id}` : ''}`);
+                if (!r.ok) throw Error('Không thể tải biểu mẫu nhóm.');
+                host.innerHTML = await r.text();
+                document.body.classList.add('modal-open');
+                bind();
+            };
+
+            const bind = () => {
+                const host = getHost();
+                if (!host) return;
+                const modal = host.querySelector('[data-shift-group-modal]'),
+                      form = host.querySelector('#shift-group-form'),
+                      search = host.querySelector('[data-employee-search]'),
+                      department = host.querySelector('[data-employee-department]'),
+                      branch = host.querySelector('[data-employee-branch]'),
+                      all = host.querySelector('[data-select-all-employees]'),
+                      rows = () => [...host.querySelectorAll('[data-employee-row]')];
+
+                if (!form) return;
+
+                const update = () => {
+                    if (!all) return;
+                    const visible = rows().filter(x => !x.hidden).map(x => x.querySelector('input[type=checkbox]'));
+                    all.checked = visible.length > 0 && visible.every(x => x?.checked);
+                    all.indeterminate = visible.some(x => x?.checked) && !all.checked;
+                };
+
+                const filter = () => {
+                    const q = (search?.value || '').trim().toLowerCase();
+                    rows().forEach(row => row.hidden = !!q && !row.dataset.search.includes(q) || !!department?.value && row.dataset.department !== department.value || !!branch?.value && row.dataset.branch !== branch.value);
+                    update();
+                };
+
+                [search, department, branch].forEach(x => x?.addEventListener('input', filter));
+                all?.addEventListener('change', () => rows().filter(x => !x.hidden).forEach(x => { const cb = x.querySelector('input[type=checkbox]'); if (cb) cb.checked = all.checked; }));
+                rows().forEach(x => x.querySelector('input[type=checkbox]')?.addEventListener('change', update));
+
+                modal?.addEventListener('click', e => { if (e.target === modal) close(); });
+                host.querySelectorAll('[data-close-modal]').forEach(x => x.addEventListener('click', close));
+
+                form.addEventListener('submit', async e => {
+                    e.preventDefault();
+                    const button = form.querySelector('button[type=submit]');
+                    if (button) button.disabled = true;
+                    try {
+                        const r = await fetch(`${pageUrl}?handler=SaveShiftGroup`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': getToken() },
+                            body: JSON.stringify({
+                                id: form.elements.id.value ? Number(form.elements.id.value) : null,
+                                code: form.elements.code.value,
+                                name: form.elements.name.value,
+                                description: form.elements.description.value,
+                                employeeIds: [...form.querySelectorAll('input[name="employeeIds"]:checked')].map(x => Number(x.value))
+                            })
+                        });
+                        const result = await r.json();
+                        if (!r.ok || !result.success) throw Error(result.message || 'Không thể lưu nhóm.');
+                        close();
+                        await reload();
+                        window.scrollTo(0, scrollTop);
+                        notify(result.message, true);
+                    } catch (error) {
+                        notify(error.message, false);
+                        if (button) button.disabled = false;
+                    }
+                });
+            };
+
+            document.addEventListener('click', async e => {
+                const openButton = e.target.closest('[data-open-shift-group]'),
+                      edit = e.target.closest('[data-edit-shift-group]'),
+                      remove = e.target.closest('[data-delete-shift-group]');
+                try {
+                    if (openButton || edit) await open(edit?.dataset.id);
+                    if (remove && confirm(`Xóa nhóm “${remove.dataset.name}”?`)) {
+                        scrollTop = window.scrollY;
+                        const r = await fetch(`${pageUrl}?handler=DeleteShiftGroup&id=${remove.dataset.id}`, {
+                            method: 'POST',
+                            headers: { 'RequestVerificationToken': getToken() }
+                        });
+                        const result = await r.json();
+                        if (!r.ok || !result.success) throw Error(result.message || 'Không thể xóa nhóm.');
+                        await reload();
+                        window.scrollTo(0, scrollTop);
+                        notify(result.message, true);
+                    }
+                } catch (error) {
+                    notify(error.message, false);
+                }
+            });
+
+            document.addEventListener('keydown', e => {
+                const host = getHost();
+                if (e.key === 'Escape' && host && host.firstElementChild) close();
+            });
+        })();
+    </script>
+}

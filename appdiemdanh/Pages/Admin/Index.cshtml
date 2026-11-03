@@ -1,0 +1,16 @@
+@page
+@model AppDiemDanh.Pages.Admin.IndexModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+<div class="section-head"><div><p class="eyebrow">TỔNG QUAN HÔM NAY</p><h1>Xin chào, @Model.AdminName</h1><p class="muted">Theo dõi nhanh tình hình vận hành hệ thống.</p></div><form method="get" class="toolbar"><select class="form-control" name="branchId"><option value="0">Tất cả chi nhánh</option>@foreach (var branch in Model.Branches){<option value="@branch.Id" selected="@(Model.BranchId == branch.Id ? "selected" : null)">@branch.Name</option>}</select><button class="btn btn-secondary" type="submit">Xem thống kê</button></form></div>
+<div class="grid grid-4">
+    <div class="card stat-card"><div class="stat-label">Tổng nhân viên</div><div class="stat-value">@Model.TotalEmployees</div><div class="stat-note">Đang hoạt động</div></div>
+    <div class="card stat-card"><div class="stat-label">Đã chấm công</div><div class="stat-value">@Model.CheckedInCount</div><div class="stat-note">@Model.AttendanceRate.ToString("0")% tổng nhân sự</div></div>
+    <div class="card stat-card"><div class="stat-label">Đi trễ hôm nay</div><div class="stat-value">@Model.LateCount</div><div class="stat-note">Cần theo dõi</div></div>
+    <div class="card stat-card"><div class="stat-label">Đơn nghỉ chờ duyệt</div><div class="stat-value">@Model.PendingLeaves</div><div class="stat-note">Cập nhật realtime</div></div>
+</div>
+<div class="grid grid-2">
+    <div class="card"><div class="section-head"><h3>Truy cập nhanh</h3></div><div class="grid grid-2"><a class="quick-link" asp-page="/Admin/Employees"><strong>Nhân viên</strong><span class="muted">Tạo và quản lý tài khoản</span></a><a class="quick-link" asp-page="/Admin/Leaves"><strong>Duyệt nghỉ phép</strong><span class="muted">@Model.PendingLeaves đơn đang chờ</span></a><a class="quick-link" asp-page="/Admin/Payroll"><strong>Bảng lương</strong><span class="muted">Tính lương theo tháng</span></a><a class="quick-link" asp-page="/Admin/Attendance"><strong>Chấm công</strong><span class="muted">Xem lịch sử điểm danh</span></a></div></div>
+    <div class="card"><div class="section-head"><h3>Trạng thái chấm công</h3></div><div class="grid grid-3"><div><div class="stat-label">Đã vào</div><h2>@Model.CheckedInCount</h2></div><div><div class="stat-label">Chưa vào</div><h2>@Model.NotCheckedInCount</h2></div><div><div class="stat-label">Tỷ lệ</div><h2>@Model.AttendanceRate.ToString("0")%</h2></div></div><div style="margin-top:20px;height:9px;background:#edf1f5;border-radius:9px"><div style="width:@Model.AttendanceRate%;height:100%;background:#2e6bff;border-radius:9px"></div></div></div>
+</div>

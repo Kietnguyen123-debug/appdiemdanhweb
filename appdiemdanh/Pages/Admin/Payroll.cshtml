@@ -1,0 +1,100 @@
+@page
+@model AppDiemDanh.Pages.Admin.PayrollModel
+@{ ViewData["Title"] = "Bảng lương"; }
+
+<div class="section-head" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;">
+    <div>
+        <p class="eyebrow">LƯƠNG & THUẾ</p>
+        <h1>Bảng lương tháng</h1>
+        <p class="muted">Tính chi tiết công, OT, bảo hiểm, PIT và thực nhận.</p>
+    </div>
+    
+    <!-- THANH CÔNG CỤ ÉP NẰM TRÊN 1 HÀNG NGANG (FLEX-WRAP: NOWRAP) -->
+    <form class="toolbar" method="get" style="display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; margin-top: 0;">
+        <input class="form-control" id="PayrollMonth" style="width: 70px;" type="number" min="1" max="12" asp-for="Month" />
+        <input class="form-control" id="PayrollYear" style="width: 85px;" type="number" asp-for="Year" />
+        <input class="form-control" id="PayrollDays" style="width: 75px;" type="number" asp-for="StandardWorkDays" />
+        
+        <button class="btn btn-primary" type="submit" style="white-space: nowrap;">Tính lương</button>
+
+        <!-- Nút 1: Xuất toàn bộ bảng lương để duyệt -->
+        <a class="btn btn-outline-secondary" 
+           asp-page="/Admin/Payroll" 
+           asp-page-handler="ExportExcel" 
+           asp-route-filter="all" 
+           asp-route-month="@Model.Month" 
+           asp-route-year="@Model.Year" 
+           asp-route-standardWorkDays="@Model.StandardWorkDays" 
+           onclick="this.href='?handler=ExportExcel&filter=all&Month=' + document.getElementById('PayrollMonth').value + '&Year=' + document.getElementById('PayrollYear').value + '&StandardWorkDays=' + document.getElementById('PayrollDays').value"
+           style="white-space: nowrap;"
+           title="Xuất toàn bộ nhân viên để ký duyệt">
+            📊 Xuất tổng hợp (Duyệt)
+        </a>
+
+        <!-- Nút 2: Chỉ xuất danh sách chuyển khoản gửi Ngân hàng -->
+        <a class="btn btn-success" 
+           asp-page="/Admin/Payroll" 
+           asp-page-handler="ExportExcel" 
+           asp-route-filter="bank" 
+           asp-route-month="@Model.Month" 
+           asp-route-year="@Model.Year" 
+           asp-route-standardWorkDays="@Model.StandardWorkDays" 
+           onclick="this.href='?handler=ExportExcel&filter=bank&Month=' + document.getElementById('PayrollMonth').value + '&Year=' + document.getElementById('PayrollYear').value + '&StandardWorkDays=' + document.getElementById('PayrollDays').value"
+           style="white-space: nowrap;"
+           title="Chỉ xuất danh sách nhân viên nhận chuyển khoản">
+            🏦 Xuất danh sách Chuyển khoản
+        </a>
+    </form>
+</div>
+
+<div class="card">
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nhân viên</th>
+                    <th>Hình thức</th>
+                    <th>Tài khoản ngân hàng</th>
+                    <th>Công</th>
+                    <th>Lương công</th>
+                    <th>OT</th>
+                    <th>Bảo hiểm</th>
+                    <th>PIT</th>
+                    <th>Tạm ứng</th>
+                    <th>Thực nhận</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach(var x in Model.Items){
+                    <tr>
+                        <td>
+                            <strong>@x.EmployeeCode</strong><br />@x.FullName
+                        </td>
+                        <td>
+                            @if (string.Equals(x.PaymentMethod, "BankTransfer", StringComparison.OrdinalIgnoreCase)) {
+                                <span class="badge badge-success" style="background-color: #d1fae5; color: #065f46; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">Chuyển khoản</span>
+                            } else {
+                                <span class="badge badge-secondary" style="background-color: #f3f4f6; color: #374151; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">Tiền mặt</span>
+                            }
+                        </td>
+                        <td>
+                            @if (string.Equals(x.PaymentMethod, "BankTransfer", StringComparison.OrdinalIgnoreCase)) {
+                                <small class="muted">@x.BankName</small><br />
+                                <strong>@(string.IsNullOrEmpty(x.BankAccountNo) ? "Chưa có STK" : x.BankAccountNo)</strong>
+                            } else {
+                                <span class="text-muted" style="color:#9ca3af;">—</span>
+                            }
+                        </td>
+                        <td>@x.ActualWorkDays/@x.StandardWorkDays</td>
+                        <td>@((x.GrossSalary - x.OvertimeSalary - x.Allowance).ToString("N0"))</td>
+                        <td>@x.OvertimeSalary.ToString("N0")</td>
+                        <td>@x.InsuranceDeduction.ToString("N0")</td>
+                        <td>@x.Pit.ToString("N0")</td>
+                        <td>@x.SalaryAdvanceDeduction.ToString("N0")</td>
+                        <td><strong>@x.NetSalary.ToString("N0")</strong></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

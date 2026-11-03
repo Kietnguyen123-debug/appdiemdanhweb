@@ -1,0 +1,178 @@
+@page
+@model AppDiemDanh.Pages.Admin.PermissionsModel
+@{
+    ViewData["Title"] = "Phân quyền";
+    var actionOrder = new[] { "View", "Use", "Create", "Edit", "Delete", "Approve", "Export" };
+    var actionLabels = new Dictionary<string, string> { ["View"] = "Xem", ["Use"] = "Sử dụng", ["Create"] = "Thêm", ["Edit"] = "Sửa", ["Delete"] = "Xóa", ["Approve"] = "Duyệt", ["Export"] = "Xuất" };
+    var moduleLabels = new Dictionary<string, string> { ["Dashboard"] = "Tổng quan", ["Employees"] = "Nhân viên", ["Departments"] = "Phòng ban", ["Branches"] = "Chi nhánh", ["Attendance"] = "Chấm công", ["Shifts"] = "Ca làm việc", ["Leave"] = "Nghỉ phép", ["Explanations"] = "Giải trình", ["Network"] = "Cấu hình mạng", ["Payroll"] = "Bảng lương", ["SalaryConfig"] = "Cấu hình lương", ["Overtime"] = "Làm thêm giờ", ["Advances"] = "Tạm ứng lương", ["Notifications"] = "Thông báo", ["Reports"] = "Báo cáo", ["Settings"] = "Hệ thống", ["AdminChatbot"] = "Trợ lý AI quản trị" };
+    var moduleIcons = new Dictionary<string, string> { ["Dashboard"] = "◈", ["Employees"] = "♙", ["Departments"] = "▤", ["Attendance"] = "◷", ["Shifts"] = "↔", ["Leave"] = "▣", ["Explanations"] = "✎", ["Network"] = "⌁", ["Payroll"] = "₫", ["SalaryConfig"] = "⚙", ["Overtime"] = "⏱", ["Advances"] = "↗", ["Notifications"] = "♢", ["Reports"] = "▥", ["Settings"] = "⚙", ["AdminChatbot"] = "✦" };
+    var actions = actionOrder.Where(action => Model.Permissions.Any(x => x.Action == action)).ToList();
+    var modules = Model.Permissions.GroupBy(x => x.Module).OrderBy(x => x.Key).ToList();
+    var enabledCount = Model.SelectedPermissionIds.Count;
+    var totalCount = Model.Permissions.Count;
+    var selectedRole = Model.Roles.FirstOrDefault(x => x.Id == Model.SelectedRoleId);
+    var isAdminRole = Model.IsSelectedRoleAdmin;
+}
+
+<div class="permission-page-header">
+    <div>
+        <p class="eyebrow">ACCESS CONTROL CENTER</p>
+        <h1>Phân quyền hệ thống</h1>
+        <p class="muted">Chọn role, bật quyền theo từng module và lưu một lần. Thay đổi chỉ áp dụng sau khi Admin xác nhận.</p>
+    </div>
+    <div class="permission-security-badge"><span>✓</span><div><strong>Admin only</strong><small>Bảo vệ cấp backend</small></div></div>
+</div>
+@if (Request.Query["saved"] == "true") { <div class="alert alert-success permission-alert">✓ Đã lưu thay đổi quyền hạn thành công.</div> }
+@if (Request.Query["updated"] == "true") { <div class="alert alert-success permission-alert">✓ Đã cập nhật thông tin role thành công.</div> }
+@if (Request.Query["deleted"] == "true") { <div class="alert alert-success permission-alert">✓ Đã xóa role thành công.</div> }
+<div asp-validation-summary="All" class="alert alert-danger"></div>
+
+<div class="permission-layout">
+    <aside class="permission-sidebar">
+        <div class="permission-card role-card">
+            <div class="permission-card-title"><span class="title-icon">♙</span><div><strong>Vai trò</strong><small>Chọn role cần cấu hình</small></div></div>
+            <div class="role-list">
+                @foreach (var role in Model.Roles)
+                {
+                    <a class="role-item @(role.Id == Model.SelectedRoleId ? "active" : "")" href="?roleId=@role.Id">
+                        <span class="role-avatar">@role.Name.Substring(0, 1).ToUpperInvariant()</span>
+                        <span class="role-info"><strong>@role.Name</strong><small>@(role.IsSystemDefault ? "Role hệ thống" : "Role tùy chỉnh")</small></span>
+                        @if (role.Id == Model.SelectedRoleId) { <span class="role-current">✓</span> }
+                    </a>
+                }
+            </div>
+        </div>
+        <form method="post" asp-page-handler="CreateRole" class="permission-card create-role-card">
+            <div class="permission-card-title"><span class="title-icon">＋</span><div><strong>Tạo role mới</strong><small>Role tùy chỉnh theo nhu cầu</small></div></div>
+            <label for="new-role-name">Tên role</label>
+            <input id="new-role-name" class="form-control" name="NewRoleName" placeholder="Ví dụ: Kế toán" maxlength="100" required />
+            <label for="new-role-description">Mô tả</label>
+            <input id="new-role-description" class="form-control" name="NewRoleDescription" placeholder="Mô tả ngắn" maxlength="500" required />
+            <button type="submit" class="btn btn-secondary btn-block">Tạo role</button>
+        </form>
+        @if (selectedRole != null && !selectedRole.IsSystemDefault)
+        {
+            <div class="permission-card edit-role-card">
+                <div class="permission-card-title"><span class="title-icon edit-icon">✎</span><div><strong>Sửa role</strong><small>Cập nhật thông tin role đang chọn</small></div></div>
+                <form method="post" asp-page-handler="EditRole" id="role-edit-form" class="role-edit-form">
+                    <input type="hidden" name="roleId" value="@selectedRole.Id" />
+                    <label for="edit-role-name">Tên role</label>
+                    <input id="edit-role-name" class="form-control" name="EditRoleName" value="@selectedRole.Name" maxlength="100" required />
+                    <label for="edit-role-description">Mô tả</label>
+                    <input id="edit-role-description" class="form-control" name="EditRoleDescription" value="@selectedRole.Description" maxlength="500" required />
+                    <button type="submit" class="btn btn-primary btn-block">Lưu thông tin role</button>
+                </form>
+                <form method="post" asp-page-handler="DeleteRole" class="role-delete-form" data-role-name="@selectedRole.Name">
+                    <input type="hidden" name="roleId" value="@selectedRole.Id" />
+                    <input type="hidden" name="confirmation" value="" />
+                    <button type="submit" class="btn btn-danger btn-block">Xóa role này</button>
+                </form>
+            </div>
+        }
+        else if (selectedRole?.IsSystemDefault == true)
+        {
+            <div class="permission-card protected-role-card"><span>✓</span><div><strong>Role hệ thống</strong><small>Không thể sửa hoặc xóa để bảo vệ hệ thống.</small></div></div>
+        }
+    </aside>
+
+    <main class="permission-main">
+        <div class="permission-card permission-summary">
+            <div><span class="summary-kicker">ĐANG CẤU HÌNH</span><h2>@(selectedRole?.Name ?? "Chưa có role")</h2><p class="muted">@(selectedRole?.Description ?? "Bật/tắt quyền truy cập theo từng chức năng của Admin Portal.")</p></div>
+            <div class="summary-stats"><div><strong id="enabled-count">@enabledCount</strong><span>Đã bật</span></div><div><strong>@totalCount</strong><span>Tổng quyền</span></div><div><strong>@modules.Count</strong><span>Module</span></div></div>
+        </div>
+
+        <div class="permission-card matrix-card">
+            <div class="matrix-toolbar">
+                <div class="matrix-search"><span>⌕</span><input id="permission-search" type="search" placeholder="Tìm module hoặc tên quyền..." autocomplete="off" /></div>
+                <div class="matrix-tools"><button type="button" class="matrix-tool" id="expand-all">Mở rộng</button><button type="button" class="matrix-tool" id="collapse-all">Thu gọn</button><span class="dirty-state" id="dirty-message">● Chưa thay đổi</span></div>
+            </div>
+            <form method="post" id="permission-form">
+                <input type="hidden" name="roleId" value="@Model.SelectedRoleId" />
+                <div class="matrix-scroll">
+                    <table class="permission-matrix" id="permission-table">
+                        <thead><tr><th class="module-heading"><label class="master-check"><input type="checkbox" id="select-all-rows" disabled="@(isAdminRole ? "disabled" : null)" /><span></span></label><span>Module / Chức năng</span></th>@foreach (var action in actions) { <th><div class="action-heading"><span>@actionLabels[action]</span><small>@action</small><label class="column-check"><input type="checkbox" class="select-column" data-action="@action" disabled="@(isAdminRole ? "disabled" : null)" /><span></span></label></div></th>}</tr></thead>
+                        <tbody>
+                        @foreach (var module in modules)
+                        {
+                            var moduleName = moduleLabels.TryGetValue(module.Key, out var translated) ? translated : module.Key;
+                            var moduleEnabled = module.Count(x => Model.SelectedPermissionIds.Contains(x.Id));
+                            <tr data-search="@moduleName @module.Key @string.Join(" ", module.Select(x => x.Description))" data-module-row="@module.Key">
+                                <td class="module-cell"><div class="module-name"><span class="module-icon">@(moduleIcons.TryGetValue(module.Key, out var icon) ? icon : "•")</span><span><strong>@moduleName</strong><small>@module.Key · <b data-module-count="@module.Key">@moduleEnabled/@module.Count()</b> quyền</small></span></div><label class="row-check"><input type="checkbox" class="select-row" data-module="@module.Key" disabled="@(isAdminRole ? "disabled" : null)" /><span></span></label></td>
+                                @foreach (var action in actions)
+                                {
+                                    var permission = module.FirstOrDefault(x => x.Action == action);
+                                    <td class="permission-cell">@if (permission != null) { <label class="permission-toggle" title="@permission.Description"><input type="checkbox" name="permissionIds" value="@permission.Id" data-module="@module.Key" data-action="@action" checked="@(Model.SelectedPermissionIds.Contains(permission.Id) ? "checked" : null)" disabled="@(isAdminRole ? "disabled" : null)" /><span class="toggle-track"><i></i></span></label> } else { <span class="not-available">—</span> }</td>
+                                }
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="matrix-footer"><span class="muted">@(isAdminRole ? "Admin luôn có toàn bộ quyền hệ thống." : "Có thể chọn nhanh theo hàng hoặc theo cột.")</span><button type="submit" class="btn btn-primary" id="save-permissions" disabled="@(isAdminRole ? "disabled" : "disabled")"><span>✓</span> Lưu thay đổi</button></div>
+            </form>
+        </div>
+    </main>
+</div>
+
+<div id="permission-confirm-modal" class="permission-confirm-modal" hidden>
+    <div class="permission-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="permission-confirm-title">
+        <div class="permission-confirm-icon" id="permission-confirm-icon">?</div>
+        <h3 id="permission-confirm-title">Xác nhận thao tác</h3>
+        <p id="permission-confirm-message">Bạn có chắc muốn tiếp tục?</p>
+        <div class="permission-confirm-actions">
+            <button type="button" class="btn btn-secondary" id="permission-confirm-cancel">Hủy</button>
+            <button type="button" class="btn btn-primary" id="permission-confirm-ok">Xác nhận</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(() => {
+    const isAdminRole = @isAdminRole.ToString().ToLowerInvariant();
+    const form = document.getElementById('permission-form'), table = document.getElementById('permission-table'), save = document.getElementById('save-permissions'), dirty = document.getElementById('dirty-message'), search = document.getElementById('permission-search'), enabled = document.getElementById('enabled-count'), master = document.getElementById('select-all-rows');
+    const cells = () => [...table.querySelectorAll('tbody input[name=permissionIds]')];
+    const initialPermissions = () => cells().filter(cell => cell.checked).map(cell => cell.value).sort().join(',');
+    const initialState = initialPermissions();
+    const updateDirtyState = () => { const changed = !isAdminRole && initialPermissions() !== initialState; save.disabled = !changed; dirty.textContent = changed ? '● Có thay đổi chưa lưu' : '● Chưa thay đổi'; dirty.classList.toggle('is-dirty', changed); };
+    const updateSelectors = () => {
+        document.querySelectorAll('.select-row').forEach(toggle => {
+            const rowCells = cells().filter(cell => cell.dataset.module === toggle.dataset.module);
+            const selected = rowCells.filter(cell => cell.checked).length;
+            toggle.checked = rowCells.length > 0 && selected === rowCells.length;
+            toggle.indeterminate = selected > 0 && selected < rowCells.length;
+        });
+        document.querySelectorAll('.select-column').forEach(toggle => {
+            const columnCells = cells().filter(cell => cell.dataset.action === toggle.dataset.action);
+            const selected = columnCells.filter(cell => cell.checked).length;
+            toggle.checked = columnCells.length > 0 && selected === columnCells.length;
+            toggle.indeterminate = selected > 0 && selected < columnCells.length;
+        });
+        const selected = cells().filter(cell => cell.checked).length;
+        master.checked = cells().length > 0 && selected === cells().length;
+        master.indeterminate = selected > 0 && selected < cells().length;
+    };
+    const updateStats = () => { enabled.textContent = cells().filter(x => x.checked).length; document.querySelectorAll('[data-module-count]').forEach(label => { const module = label.dataset.moduleCount; const all = cells().filter(x => x.dataset.module === module); label.textContent = `${all.filter(x => x.checked).length}/${all.length} quyền`; }); updateSelectors(); updateDirtyState(); };
+    const updateVisibility = () => { const value = search.value.trim().toLowerCase(); document.querySelectorAll('tbody tr[data-search]').forEach(row => row.hidden = Boolean(value && !row.dataset.search.toLowerCase().includes(value))); };
+    const changeCells = (predicate, checked) => { cells().filter(predicate).forEach(cell => cell.checked = checked); updateStats(); };
+    cells().forEach(cell => cell.addEventListener('change', updateStats));
+    document.querySelectorAll('.select-row').forEach(toggle => toggle.addEventListener('change', () => changeCells(cell => cell.dataset.module === toggle.dataset.module, toggle.checked)));
+    document.querySelectorAll('.select-column').forEach(toggle => toggle.addEventListener('change', () => changeCells(cell => cell.dataset.action === toggle.dataset.action, toggle.checked)));
+    master.addEventListener('change', () => changeCells(() => true, master.checked));
+    search.addEventListener('input', updateVisibility);
+    document.getElementById('expand-all').addEventListener('click', updateVisibility);
+    document.getElementById('collapse-all').addEventListener('click', () => document.querySelectorAll('tbody tr').forEach(row => row.hidden = true));
+    const modal = document.getElementById('permission-confirm-modal'), modalTitle = document.getElementById('permission-confirm-title'), modalMessage = document.getElementById('permission-confirm-message'), modalIcon = document.getElementById('permission-confirm-icon'), modalOk = document.getElementById('permission-confirm-ok'), modalCancel = document.getElementById('permission-confirm-cancel');
+    let pendingForm = null, pendingAction = null;
+    const closeModal = () => { modal.hidden = true; pendingForm = null; pendingAction = null; };
+    const openModal = (targetForm, title, message, action, danger = false) => { pendingForm = targetForm; pendingAction = action; modalTitle.textContent = title; modalMessage.textContent = message; modalIcon.textContent = danger ? '!' : '?'; modalIcon.classList.toggle('danger', danger); modalOk.classList.toggle('btn-danger', danger); modalOk.classList.toggle('btn-primary', !danger); modal.hidden = false; modalOk.focus(); };
+    modalCancel.addEventListener('click', closeModal); modal.addEventListener('click', event => { if (event.target === modal) closeModal(); });
+    modalOk.addEventListener('click', () => { if (!pendingForm) return; if (pendingAction === 'delete') pendingForm.querySelector('input[name=confirmation]').value = 'DELETE'; const target = pendingForm; closeModal(); target.submit(); });
+    form.addEventListener('submit', event => { event.preventDefault(); openModal(form, 'Lưu thay đổi quyền', 'Các quyền đang chọn sẽ được cập nhật cho role này.', 'save'); });
+    document.getElementById('role-edit-form')?.addEventListener('submit', event => { event.preventDefault(); openModal(event.currentTarget, 'Cập nhật role', 'Thông tin role sẽ được thay đổi theo nội dung bạn đã nhập.', 'edit'); });
+    document.querySelectorAll('.role-delete-form').forEach(deleteForm => deleteForm.addEventListener('submit', event => { event.preventDefault(); const name = deleteForm.dataset.roleName || 'role này'; openModal(deleteForm, 'Xóa role', `Bạn có chắc muốn xóa ${name}? Toàn bộ quyền gán cho role sẽ bị gỡ.`, 'delete', true); }));
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && !modal.hidden) closeModal(); });
+    updateStats(); updateDirtyState();
+})();
+</script>
+}

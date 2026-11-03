@@ -1,0 +1,20 @@
+@page
+@model AppDiemDanh.Pages.Admin.DepartmentsModel
+@{ ViewData["Title"] = "Phòng ban"; }
+<div class="section-head"><div><p class="eyebrow">QUẢN TRỊ NHÂN SỰ</p><h1>Quản lý phòng ban</h1><p class="muted">Tạo và quản lý phòng ban để gán cho nhân viên.</p></div></div>
+@if(Model.ErrorMessage != null){<div class="alert alert-danger">@Model.ErrorMessage</div>}
+@if(Model.Message != null){<div class="alert alert-success">@Model.Message</div>}
+<div class="grid grid-2">
+    <div class="card">
+        <h3>Thêm phòng ban</h3>
+        <form method="post" asp-page-handler="Create">
+            <label>Tên phòng ban</label>
+            <input class="form-control" asp-for="Name" required maxlength="200" placeholder="Ví dụ: Phòng Nhân sự" />
+            <button class="btn btn-primary" type="submit" style="margin-top:14px">Thêm phòng ban</button>
+        </form>
+    </div>
+    <div class="card">
+        <h3>Danh sách phòng ban</h3>
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Tên phòng ban</th><th>Số nhân viên</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>@foreach(var item in Model.Departments){<tr><td><strong>@item.Name</strong></td><td>@item.Employees.Count</td><td><span class="badge @(item.IsActive ? "badge-success":"badge-danger")">@(item.IsActive ? "Hoạt động":"Đã khóa")</span></td><td><div class="toolbar"><form method="post" asp-page-handler="Toggle" asp-route-id="@item.Id"><button class="btn btn-secondary" type="submit">@(item.IsActive ? "Khóa":"Mở khóa")</button></form><form method="post" asp-page-handler="Delete" asp-route-id="@item.Id" data-delete-form data-delete-message="Bạn có chắc muốn xóa phòng ban @item.Name không?"><button class="btn btn-danger" type="submit">Xóa</button></form></div></td></tr>}</tbody></table></div>
+    </div>
+</div>

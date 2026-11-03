@@ -1,0 +1,33 @@
+@page
+@model AppDiemDanh.Pages.Admin.Network.CreateModel
+@{ ViewData["Title"] = Model.Type == "ip" ? "Thêm IP" : "Thêm Wi-Fi"; }
+<div class="section-head">
+    <div><p class="eyebrow">HẠ TẦNG CHẤM CÔNG</p><h1>@(Model.Type == "ip" ? "Thêm IP công khai" : "Thêm Wi-Fi/BSSID")</h1><p class="muted">Tạo cấu hình mạng mới cho một chi nhánh.</p></div>
+    <div class="toolbar"><a class="btn @(Model.Type == "ip" ? "btn-primary" : "btn-secondary")" asp-page="/Admin/Network/Create" asp-route-type="ip">Thêm IP</a><a class="btn @(Model.Type == "wifi" ? "btn-primary" : "btn-secondary")" asp-page="/Admin/Network/Create" asp-route-type="wifi">Thêm Wi-Fi</a><a class="btn btn-secondary" asp-page="/Admin/Network">← Danh sách</a></div>
+</div>
+@if (Model.ErrorMessage != null)
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+<div class="card">
+    @if (Model.Type == "ip")
+    {
+        <form method="post" asp-route-type="ip" class="grid grid-2">
+            <div><label>Chi nhánh</label><select class="form-control" asp-for="IpInput.BranchId" required><option value="0">-- Chọn chi nhánh --</option>@foreach (var branch in Model.Branches){<option value="@branch.Id">@branch.Name</option>}</select></div>
+            <div><label>Địa chỉ IP</label><div class="toolbar"><input class="form-control" asp-for="IpInput.PublicIp" id="public-ip" maxlength="45" pattern="^[0-9a-fA-F:.]+$" placeholder="Ví dụ: 14.162.10.20" required /><button class="btn btn-secondary" type="button" id="detect-ip">Tự động lấy IP</button></div></div>
+            <div><label>Mô tả</label><input class="form-control" asp-for="IpInput.Description" placeholder="Văn phòng chính" /></div>
+            <div class="toolbar" style="align-items:end"><button class="btn btn-primary" type="submit">Tạo cấu hình IP</button><a class="btn btn-secondary" asp-page="/Admin/Network">Hủy</a></div>
+        </form>
+    }
+    else
+    {
+        <form method="post" asp-route-type="wifi" class="grid grid-2">
+            <div><label>Chi nhánh</label><select class="form-control" asp-for="WifiInput.BranchId" required><option value="0">-- Chọn chi nhánh --</option>@foreach (var branch in Model.Branches){<option value="@branch.Id">@branch.Name</option>}</select></div>
+            <div><label>Tên Wi-Fi (SSID)</label><input class="form-control" asp-for="WifiInput.SSID" maxlength="32" placeholder="Office-WiFi" required /></div>
+            <div><label>BSSID</label><div class="toolbar"><input class="form-control" asp-for="WifiInput.BSSID" id="wifi-bssid" maxlength="17" pattern="^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$" placeholder="AA:BB:CC:DD:EE:FF" required /><button class="btn btn-secondary" type="button" id="paste-bssid">Dán BSSID</button></div><small id="bssid-status" class="muted">Chạy Tools\Get-Bssid.cmd trước, sau đó bấm Dán BSSID.</small></div>
+            <div><label>Mô tả</label><input class="form-control" asp-for="WifiInput.Description" placeholder="Wi-Fi tầng 1" /></div>
+            <div class="toolbar" style="align-items:end"><button class="btn btn-primary" type="submit">Tạo cấu hình Wi-Fi</button><a class="btn btn-secondary" asp-page="/Admin/Network">Hủy</a></div>
+        </form>
+        <p class="muted network-note">Chạy <code>Tools\Get-Bssid.cmd</code> trên máy Windows đang kết nối Wi-Fi, rồi bấm Dán BSSID.</p>
+    }
+</div>

@@ -1,0 +1,16 @@
+@page
+@model AppDiemDanh.Pages.Admin.NetworkModel
+@{ ViewData["Title"] = "Cấu hình mạng"; }
+<div class="section-head">
+    <div><p class="eyebrow">HẠ TẦNG CHẤM CÔNG</p><h1>Cấu hình IP & Wi-Fi</h1><p class="muted">Thiết lập IP công khai và BSSID được phép theo từng chi nhánh.</p></div>
+    <div class="toolbar">
+        <a class="btn btn-primary" asp-page="/Admin/Network/Create" asp-route-type="ip">+ Thêm IP</a>
+        <a class="btn btn-secondary" asp-page="/Admin/Network/Create" asp-route-type="wifi">+ Thêm Wi-Fi</a>
+    </div>
+</div>
+@if (!string.IsNullOrWhiteSpace(Model.Message))
+{
+    <div class="alert @(Model.Success ? "alert-success" : "alert-danger")">@Model.Message</div>
+}
+<div class="card" style="margin-top:20px"><div class="section-head"><h3>Danh sách IP được phép</h3><a class="btn btn-primary" asp-page="/Admin/Network/Create" asp-route-type="ip">+ Thêm IP</a></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Chi nhánh</th><th>IP</th><th>Mô tả</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>@if(Model.Ips.Count == 0){<tr><td colspan="5" class="empty">Chưa có IP nào.</td></tr>}else{foreach(var item in Model.Ips){<tr><td>@item.Branch?.Name</td><td><strong>@item.PublicIp</strong></td><td>@item.Description</td><td><span class="badge @(item.IsActive ? "badge-success":"badge-neutral")">@(item.IsActive ? "Đang dùng":"Đã tắt")</span></td><td><div class="toolbar"><a class="btn btn-secondary" asp-page="/Admin/Network/Edit" asp-route-type="ip" asp-route-id="@item.Id">Sửa</a><form method="post" asp-page-handler="ToggleIp" asp-route-id="@item.Id"><button class="btn btn-secondary">@(item.IsActive ? "Tắt":"Bật")</button></form><form method="post" asp-page-handler="DeleteIp" asp-route-id="@item.Id" data-delete-form data-delete-message="Bạn có chắc muốn xóa IP này không?"><button class="btn btn-danger">Xóa</button></form></div></td></tr>}}</tbody></table></div></div>
+<div class="card" style="margin-top:20px"><div class="section-head"><h3>Danh sách Wi-Fi/BSSID</h3><a class="btn btn-primary" asp-page="/Admin/Network/Create" asp-route-type="wifi">+ Thêm Wi-Fi</a></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Chi nhánh</th><th>SSID</th><th>BSSID</th><th>Mô tả</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>@if(Model.Wifis.Count == 0){<tr><td colspan="6" class="empty">Chưa có Wi-Fi nào.</td></tr>}else{foreach(var item in Model.Wifis){<tr><td>@item.Branch?.Name</td><td>@item.SSID</td><td><strong>@item.BSSID</strong></td><td>@item.Description</td><td><span class="badge @(item.IsActive ? "badge-success":"badge-neutral")">@(item.IsActive ? "Đang dùng":"Đã tắt")</span></td><td><div class="toolbar"><a class="btn btn-secondary" asp-page="/Admin/Network/Edit" asp-route-type="wifi" asp-route-id="@item.Id">Sửa</a><form method="post" asp-page-handler="ToggleWifi" asp-route-id="@item.Id"><button class="btn btn-secondary">@(item.IsActive ? "Tắt":"Bật")</button></form><form method="post" asp-page-handler="DeleteWifi" asp-route-id="@item.Id" data-delete-form data-delete-message="Bạn có chắc muốn xóa Wi-Fi này không?"><button class="btn btn-danger">Xóa</button></form></div></td></tr>}}</tbody></table></div></div>

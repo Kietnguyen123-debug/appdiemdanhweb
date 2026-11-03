@@ -1,0 +1,111 @@
+@page
+@model AppDiemDanh.Pages.Admin.ShiftGroupsModel
+@{
+    ViewData["Title"] = "Nhóm phân ca";
+}
+<div class="section-head">
+    <div><p class="eyebrow">QUẢN LÝ PHÂN CA</p><h1>Nhóm phân ca</h1><p class="muted">Tạo nhóm nhân viên để đồng bộ với quy trình phân ca.</p></div>
+    <button class="btn btn-primary" type="button" data-open-shift-group>+ Tạo nhóm phân ca</button>
+</div>
+<div id="shift-group-toast" class="alert" hidden></div>
+<div class="card" id="shift-group-list">@await Html.PartialAsync("_ShiftGroupList", Model.Groups)</div>
+<div id="shift-group-modal-host"></div>
+<form id="shift-group-antiforgery" method="post">@Html.AntiForgeryToken()</form>
+
+@section Scripts {
+<script>
+(() => {
+    const pageUrl = '@Url.Page("/Admin/ShiftGroups")';
+    const list = document.getElementById('shift-group-list');
+    const host = document.getElementById('shift-group-modal-host');
+    const token = document.querySelector('#shift-group-antiforgery input[name="__RequestVerificationToken"]').value;
+    const toast = document.getElementById('shift-group-toast');
+    let scrollTop = 0;
+
+    const showToast = (message, success) => {
+        toast.textContent = message;
+        toast.className = `alert ${success ? 'alert-success' : 'alert-danger'}`;
+        toast.hidden = false;
+        window.setTimeout(() => toast.hidden = true, 3500);
+    };
+    const loadList = async () => {
+        const response = await fetch(`${pageUrl}?handler=List`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        if (!response.ok) throw new Error('Không thể tải danh sách nhóm.');
+        list.innerHTML = await response.text();
+    };
+    const closeModal = () => { host.innerHTML = ''; document.body.classList.remove('modal-open'); };
+    const openModal = async (id) => {
+        scrollTop = window.scrollY;
+        const response = await fetch(`${pageUrl}?handler=Modal${id ? `&id=${encodeURIComponent(id)}` : ''}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        if (!response.ok) throw new Error('Không thể tải biểu mẫu nhóm.');
+        host.innerHTML = await response.text();
+        document.body.classList.add('modal-open');
+        bindModal();
+    };
+    const bindModal = () => {
+        const modal = host.querySelector('[data-shift-group-modal]');
+        const form = host.querySelector('#shift-group-form');
+        const search = host.querySelector('[data-employee-search]');
+        const department = host.querySelector('[data-employee-department]');
+        const branch = host.querySelector('[data-employee-branch]');
+        const selectAll = host.querySelector('[data-select-all-employees]');
+        const rows = () => [...host.querySelectorAll('[data-employee-row]')];
+        const applyFilter = () => {
+            const query = (search.value || '').trim().toLowerCase();
+            rows().forEach(row => {
+                const matches = (!query || row.dataset.search.includes(query)) && (!department.value || row.dataset.department === department.value) && (!branch.value || row.dataset.branch === branch.value);
+                row.hidden = !matches;
+            });
+            updateSelectAll();
+        };
+        const updateSelectAll = () => {
+            const visible = rows().filter(row => !row.hidden).map(row => row.querySelector('input[type=checkbox]'));
+            selectAll.checked = visible.length > 0 && visible.every(input => input.checked);
+            selectAll.indeterminate = visible.some(input => input.checked) && !selectAll.checked;
+        };
+        [search, department, branch].forEach(input => input.addEventListener('input', applyFilter));
+        selectAll.addEventListener('change', () => rows().filter(row => !row.hidden).forEach(row => row.querySelector('input[type=checkbox]').checked = selectAll.checked));
+        rows().forEach(row => row.querySelector('input[type=checkbox]').addEventListener('change', updateSelectAll));
+        modal.addEventListener('click', event => { if (event.target === modal) closeModal(); });
+        host.querySelector('[data-close-modal]').addEventListener('click', closeModal);
+        form.addEventListener('submit', async event => {
+            event.preventDefault();
+            const button = form.querySelector('button[type=submit]');
+            button.disabled = true;
+            const payload = {
+                id: form.elements.id.value ? Number(form.elements.id.value) : null,
+                code: form.elements.code.value,
+                name: form.elements.name.value,
+                description: form.elements.description.value,
+                employeeIds: [...form.querySelectorAll('input[name="employeeIds"]:checked')].map(input => Number(input.value))
+            };
+            try {
+                const response = await fetch(`${pageUrl}?handler=SaveGroup`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token }, body: JSON.stringify(payload) });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || 'Không thể lưu nhóm.');
+                closeModal();
+                await loadList();
+                window.scrollTo(0, scrollTop);
+                showToast(result.message, true);
+            } catch (error) { showToast(error.message, false); button.disabled = false; }
+        });
+    };
+    document.addEventListener('click', async event => {
+        const open = event.target.closest('[data-open-shift-group]');
+        const edit = event.target.closest('[data-edit-shift-group]');
+        const remove = event.target.closest('[data-delete-shift-group]');
+        try {
+            if (open || edit) await openModal(edit?.dataset.id);
+            if (remove && window.confirm(`Xóa nhóm “${remove.dataset.name}”?`)) {
+                scrollTop = window.scrollY;
+                const response = await fetch(`${pageUrl}?handler=DeleteGroup&id=${remove.dataset.id}`, { method: 'POST', headers: { 'RequestVerificationToken': token } });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || 'Không thể xóa nhóm.');
+                await loadList(); window.scrollTo(0, scrollTop); showToast(result.message, true);
+            }
+        } catch (error) { showToast(error.message, false); }
+    });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && host.firstElementChild) closeModal(); });
+})();
+</script>
+}

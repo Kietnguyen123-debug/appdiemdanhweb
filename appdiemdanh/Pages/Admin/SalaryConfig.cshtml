@@ -1,0 +1,354 @@
+@page
+@model AppDiemDanh.Pages.Admin.SalaryConfigModel
+@{
+    ViewData["Title"] = "Quản lý cấu hình lương";
+}
+
+<div class="salary-module" id="salary-module">
+    <div class="salary-page-header">
+        <div>
+            <p class="eyebrow">LƯƠNG & PHÚC LỢI</p>
+            <h1>Quản lý cấu hình lương</h1>
+            <p class="muted">Quản lý danh mục lương dùng chung và gói lương theo từng nhân viên.</p>
+        </div>
+        <span class="salary-security-badge">🔒 RBAC · Audit trail</span>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.Message))
+    {
+        <div class="alert @(Model.IsError ? "alert-danger" : "alert-success")">@Model.Message</div>
+    }
+
+    <nav class="salary-top-tabs" aria-label="Phân khu cấu hình lương">
+        <button type="button" class="salary-tab @(Model.ActiveTab == "global" ? "is-active" : "")" data-tab="global">Cấu hình dùng chung</button>
+        <button type="button" class="salary-tab @(Model.ActiveTab == "employees" ? "is-active" : "")" data-tab="employees">Lương nhân viên</button>
+    </nav>
+
+    <section class="salary-tab-panel @(Model.ActiveTab == "global" ? "is-active" : "")" data-panel="global">
+        <div class="salary-subtabs">
+            <button type="button" class="salary-subtab @(Model.ActiveSubtab == "components" ? "is-active" : "")" data-subtab="components">Thành phần lương</button>
+            <button type="button" class="salary-subtab @(Model.ActiveSubtab == "templates" ? "is-active" : "")" data-subtab="templates">Mẫu lương khung</button>
+            <button type="button" class="salary-subtab @(Model.ActiveSubtab == "legal" ? "is-active" : "")" data-subtab="legal">Thông số pháp lý</button>
+        </div>
+
+        <div class="salary-subpanel @(Model.ActiveSubtab == "components" ? "is-active" : "")" data-subpanel="components">
+            <div class="section-head salary-section-head"><div><h2>Danh mục khoản lương</h2><p class="muted">Định nghĩa khoản cộng, khoản trừ và biến đầu vào cho công thức.</p></div><button class="btn btn-primary" type="button" data-open-salary-modal="component">+ Thêm thành phần</button></div>
+            <div class="card table-wrap">
+                <table class="data-table"><thead><tr><th>Tên khoản</th><th>Phân loại</th><th>Loại tính</th><th>Thuế TNCN</th><th>Bảo hiểm</th><th>Trạng thái</th><th></th></tr></thead><tbody>
+                    @foreach (var item in Model.SalaryComponents)
+                    {
+                        <tr><td><strong>@item.Name</strong></td><td>@item.Category</td><td>@item.CalculationType</td><td>@item.TaxTreatment</td><td>@item.InsuranceTreatment</td><td><span class="badge badge-success">Đang dùng</span></td><td><button type="button" class="btn btn-danger btn-sm" data-open-delete-modal="component" data-delete-id="@item.Id" data-delete-name="@item.Name">Xóa</button></td></tr>
+                    }
+                </tbody></table>
+            </div>
+        </div>
+
+        <div class="salary-subpanel @(Model.ActiveSubtab == "templates" ? "is-active" : "")" data-subpanel="templates">
+            <div class="section-head salary-section-head"><div><h2>Mẫu lương khung</h2><p class="muted">Khung theo nhóm vị trí, không lưu số tiền trực tiếp trên hồ sơ nhân viên.</p></div><button class="btn btn-primary" type="button" data-open-salary-modal="template">+ Tạo mẫu lương</button></div>
+            <div class="card table-wrap">
+                <table class="data-table"><thead><tr><th>Mã mẫu</th><th>Tên mẫu</th><th>Nhóm vị trí</th><th>Số thành phần</th><th></th></tr></thead><tbody>
+                @foreach (var item in Model.SalaryTemplates)
+                {
+                    <tr><td><strong>@item.Code</strong></td><td>@item.Name</td><td>@item.Group</td><td>@item.ComponentCount</td><td><div class="salary-template-actions"><a class="btn btn-secondary" asp-controller="SalaryTemplates" asp-action="Detail" asp-route-id="@item.Id">Cấu hình</a><button type="button" class="btn btn-danger btn-sm" data-open-delete-modal="template" data-delete-id="@item.Id" data-delete-name="@item.Name">Xóa</button></div></td></tr>
+                }
+                @if (Model.SalaryTemplates.Count == 0) { <tr><td colspan="5" class="empty">Chưa có mẫu lương khung.</td></tr> }
+                </tbody></table>
+            </div>
+
+        </div>
+
+        <div class="salary-subpanel @(Model.ActiveSubtab == "legal" ? "is-active" : "")" data-subpanel="legal">
+            <div class="section-head salary-section-head"><div><h2>Thông số pháp lý mặc định</h2><p class="muted">Phiên bản cấu hình có hiệu lực từ @Model.LegalDefaults.EffectiveDate.ToString("dd/MM/yyyy"). Có thể cập nhật theo văn bản pháp luật mới.</p></div><span class="badge badge-warning">Cần phê duyệt khi thay đổi</span></div>
+            <div class="grid grid-3">
+                <div class="card"><span class="stat-label">Mức tham chiếu BHXH</span><strong class="salary-stat">@Model.LegalDefaults.ReferenceInsuranceSalary.ToString("N0") ₫</strong><small class="muted">Trần BHXH/BHYT: @Model.LegalDefaults.InsuranceCeiling.ToString("N0") ₫</small></div>
+                <div class="card"><span class="stat-label">Giảm trừ gia cảnh</span><strong class="salary-stat">@Model.LegalDefaults.PersonalDeduction.ToString("N0") ₫</strong><small class="muted">Người phụ thuộc: @Model.LegalDefaults.DependentDeduction.ToString("N0") ₫/tháng</small></div>
+                <div class="card"><span class="stat-label">Ăn giữa ca miễn thuế</span><strong class="salary-stat">@Model.LegalDefaults.MealTaxExemptLimit.ToString("N0") ₫</strong><small class="muted">Áp dụng theo định mức cấu hình</small></div>
+            </div>
+            <div class="card salary-legal-card"><div><strong>Tỷ lệ bảo hiểm</strong><ul>@foreach (var rate in Model.LegalDefaults.InsuranceRates) { <li>@rate</li> }</ul></div><div><strong>Biểu thuế lũy tiến 5 bậc</strong><ul>@foreach (var bracket in Model.LegalDefaults.TaxBrackets) { <li>@bracket</li> }</ul></div></div>
+            <form method="post" asp-page-handler="SavePolicy" class="card salary-policy-form">
+                <h3>Tạo phiên bản tham số mới</h3>
+                <p class="muted">Thay đổi được lưu thành phiên bản mới, không ghi đè policy cũ và không cần restart ứng dụng.</p>
+                <div class="grid grid-3">
+                    <label>Ngày hiệu lực<input class="form-control" type="date" asp-for="PolicyForm.EffectiveDate" required /></label>
+                    <label>Mức tham chiếu BHXH<input class="form-control" type="number" step="0.01" min="0" asp-for="PolicyForm.ReferenceInsuranceSalary" required /></label>
+                    <label>Trần BHXH/BHYT<input class="form-control" type="number" step="0.01" min="0" asp-for="PolicyForm.InsuranceCeiling" required /></label>
+                    <label>GDTGC bản thân<input class="form-control" type="number" step="0.01" min="0" asp-for="PolicyForm.PersonalDeduction" required /></label>
+                    <label>GDTGC người phụ thuộc<input class="form-control" type="number" step="0.01" min="0" asp-for="PolicyForm.DependentDeduction" required /></label>
+                    <label>Trần miễn thuế ăn trưa<input class="form-control" type="number" step="0.01" min="0" asp-for="PolicyForm.MealTaxExemptLimit" required /></label>
+                    <label>Ngưỡng khấu trừ vãng lai<input class="form-control" type="number" step="0.01" min="0" asp-for="PolicyForm.CasualIncomeWithholdingThreshold" required /></label>
+                    <label>Tỷ lệ khấu trừ vãng lai<input class="form-control" type="number" step="0.001" min="0" max="1" asp-for="PolicyForm.CasualIncomeWithholdingRate" required /></label>
+                    <label>Văn bản nguồn<input class="form-control" asp-for="PolicyForm.SourceReference" required /></label>
+                </div>
+                <h4 class="salary-policy-heading">Tỷ lệ bảo hiểm và biểu thuế</h4>
+                <div class="grid grid-3">
+                    <label>NLĐ - BHXH<input class="form-control" type="number" step="0.001" min="0" max="1" asp-for="PolicyForm.EmployeeSocialInsuranceRate" required /></label>
+                    <label>NLĐ - BHYT<input class="form-control" type="number" step="0.001" min="0" max="1" asp-for="PolicyForm.EmployeeHealthInsuranceRate" required /></label>
+                    <label>NLĐ - BHTN<input class="form-control" type="number" step="0.001" min="0" max="1" asp-for="PolicyForm.EmployeeUnemploymentInsuranceRate" required /></label>
+                    <label>NSDLĐ - BHXH/BHTNLĐ-BNN<input class="form-control" type="number" step="0.001" min="0" max="1" asp-for="PolicyForm.EmployerSocialInsuranceRate" required /></label>
+                    <label>NSDLĐ - BHYT<input class="form-control" type="number" step="0.001" min="0" max="1" asp-for="PolicyForm.EmployerHealthInsuranceRate" required /></label>
+                    <label>NSDLĐ - BHTN<input class="form-control" type="number" step="0.001" min="0" max="1" asp-for="PolicyForm.EmployerUnemploymentInsuranceRate" required /></label>
+                </div>
+                <div class="table-wrap salary-bracket-editor"><table class="data-table"><thead><tr><th>Bậc</th><th>Giới hạn trên (để trống ở bậc cuối)</th><th>Tỷ lệ (0.05 = 5%)</th><th>Tên</th></tr></thead><tbody>@for (var index = 0; index < Model.PolicyForm.TaxBrackets.Count; index++) { <tr><td><input type="hidden" asp-for="PolicyForm.TaxBrackets[index].Sequence" />@Model.PolicyForm.TaxBrackets[index].Sequence</td><td><input class="form-control" type="number" step="0.01" min="0" asp-for="PolicyForm.TaxBrackets[index].UpperLimit" /></td><td><input class="form-control" type="number" step="0.001" min="0" max="1" asp-for="PolicyForm.TaxBrackets[index].Rate" /></td><td><input class="form-control" asp-for="PolicyForm.TaxBrackets[index].Name" /></td></tr> }</tbody></table></div>
+                <button class="btn btn-primary" type="submit">Lưu phiên bản policy</button>
+            </form>
+        </div>
+    </section>
+
+    <section class="salary-tab-panel @(Model.ActiveTab == "employees" ? "is-active" : "")" data-panel="employees">
+        <div class="salary-subtabs"><button type="button" class="salary-subtab is-active" data-subtab="employee-list">Danh sách nhân viên</button></div>
+        <div id="employee-salary-notification" class="alert" role="status" aria-live="polite" hidden></div>
+        <div class="card salary-filter-card"><form method="get" class="toolbar" data-employee-filters><input type="hidden" name="ActiveTab" value="employees" /><input type="hidden" name="ActiveSubtab" value="employee-list" /><label><span class="form-label">Chi nhánh</span><select class="form-control" name="BranchId" onchange="this.form.submit()"><option value="">Tất cả chi nhánh</option>@foreach (var branch in Model.Branches) { <option value="@branch.Id" selected="@(Model.BranchId == branch.Id)">@branch.Name</option> }</select></label><label><span class="form-label">Phòng ban</span><select class="form-control" data-department-filter><option value="">Tất cả phòng ban</option>@foreach (var department in Model.Departments) { <option value="@department.Id">@department.Name</option> }</select></label><label><span class="form-label">Mẫu lương</span><select class="form-control" data-template-filter><option value="">Tất cả mẫu lương</option><option value="0">Chưa gán mẫu</option>@foreach (var template in Model.SalaryTemplates.Where(x => x.Id > 0)) { <option value="@template.Id">@template.Name</option> }</select></label><label class="salary-search"><span class="form-label">Lọc nhanh</span><input class="form-control" type="search" placeholder="Mã hoặc tên nhân viên" data-employee-search /></label><button class="btn btn-primary" type="button" data-open-bulk-salary disabled>⚡ Áp dụng mẫu lương hàng loạt</button></form></div>
+        <div class="card table-wrap"><table class="data-table" id="employee-table"><thead><tr><th><input type="checkbox" data-select-all-employees aria-label="Chọn tất cả nhân viên" /></th><th>Nhân viên</th><th>Phòng ban</th><th>Chi nhánh</th><th>Mẫu lương áp dụng</th><th>Trạng thái lương</th><th>Thao tác</th></tr></thead><tbody>
+            @foreach (var employee in Model.Employees)
+            {
+                <tr data-employee-row data-employee-id="@employee.Id" data-search="@employee.EmployeeCode @employee.FullName @employee.DepartmentName" data-department-id="@employee.DepartmentId" data-template-id="@(employee.SalaryTemplateId?.ToString() ?? "0")"><td><input type="checkbox" data-employee-select aria-label="Chọn @employee.FullName" /></td><td><strong>@employee.EmployeeCode</strong><br /><span class="muted">@employee.FullName</span></td><td>@employee.DepartmentName</td><td>@employee.BranchName</td><td data-template-cell>@if (!string.IsNullOrWhiteSpace(employee.SalaryTemplateName)) { <span class="badge badge-success" data-template-badge>@employee.SalaryTemplateName</span> } else { <span class="badge badge-warning" data-template-badge>Chưa cấu hình</span> }</td><td><span class="badge @(employee.IsActive ? "badge-success" : "badge-neutral")">@(employee.IsActive ? "Đang hoạt động" : "Đã khóa")</span></td><td><button class="btn btn-secondary" type="button" data-open-individual-salary="@employee.Id">Cấu hình lương</button></td></tr>
+            }
+            @if (Model.Employees.Count == 0) { <tr><td colspan="7" class="empty">Chưa có nhân viên phù hợp với bộ lọc.</td></tr> }
+        </tbody></table></div>
+    </section>
+</div>
+
+<div class="salary-modal" id="bulk-salary-modal" hidden>
+    <div class="salary-modal-backdrop" data-close-bulk-salary></div>
+    <form class="card salary-modal-card" data-bulk-salary-form>
+        @Html.AntiForgeryToken()
+        <div class="section-head"><h3>Áp dụng mẫu lương hàng loạt</h3><button type="button" class="btn btn-secondary" data-close-bulk-salary>Đóng</button></div>
+        <p class="muted">Đang chọn <strong data-selected-count>0</strong> nhân viên.</p>
+        <div class="grid grid-2"><label>Mẫu lương khung<select class="form-control" name="SalaryTemplateId" required><option value="">Chọn mẫu lương</option>@foreach (var template in Model.SalaryTemplates.Where(x => x.Id > 0)) { <option value="@template.Id">@template.Name</option> }</select></label><label>Ngày áp dụng<input class="form-control" type="date" name="EffectiveDate" value="@DateTime.Today.ToString("yyyy-MM-dd")" required /></label></div>
+        <div class="salary-modal-actions"><button type="button" class="btn btn-secondary" data-close-bulk-salary>Hủy</button><button type="submit" class="btn btn-primary">Xác nhận áp dụng</button></div>
+    </form>
+</div>
+
+<div id="employee-salary-drawer-host"></div>
+
+@section Scripts {
+<script>
+(() => {
+    const root = document.getElementById('salary-module');
+    const table = document.getElementById('employee-table');
+    const bulkModal = document.getElementById('bulk-salary-modal');
+    const bulkForm = document.querySelector('[data-bulk-salary-form]');
+    const drawerHost = document.getElementById('employee-salary-drawer-host');
+    const notification = document.getElementById('employee-salary-notification');
+    const deleteModal = document.getElementById('salary-delete-modal');
+    if (!root || !table || !bulkForm) return;
+
+    const token = () => document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+    const rows = () => [...table.querySelectorAll('[data-employee-row]')];
+    const selectedRows = () => rows().filter(row => row.querySelector('[data-employee-select]')?.checked);
+
+    const showMessage = (message, success) => {
+        notification.textContent = message;
+        notification.className = `alert ${success ? 'alert-success' : 'alert-danger'}`;
+        notification.hidden = false;
+    };
+
+    const readJson = async response => {
+        try { return await response.json(); }
+        catch { return { success: false, message: `Máy chủ trả về lỗi HTTP ${response.status}.` }; }
+    };
+
+    const closeAllModals = () => {
+        document.querySelectorAll('.salary-modal').forEach(modal => {
+            modal.hidden = true;
+            modal.style.display = 'none';
+            modal.style.pointerEvents = 'none';
+        });
+    };
+
+    const showModal = (modalEl, isDelete = false) => {
+        if (!modalEl) return;
+        closeAllModals(); 
+        modalEl.hidden = false;
+        modalEl.style.display = 'flex';
+        modalEl.style.pointerEvents = 'auto';
+        modalEl.style.zIndex = isDelete ? '99999' : '3000';
+    };
+
+    const updateBulkState = () => {
+        const selected = selectedRows();
+        const button = document.querySelector('[data-open-bulk-salary]');
+        if (button) button.disabled = selected.length === 0;
+        const count = bulkModal.querySelector('[data-selected-count]');
+        if (count) count.textContent = selected.length;
+    };
+
+    const applyFilters = () => {
+        const search = (root.querySelector('[data-employee-search]')?.value || '').toLowerCase();
+        const department = root.querySelector('[data-department-filter]')?.value || '';
+        const template = root.querySelector('[data-template-filter]')?.value || '';
+        rows().forEach(row => {
+            const matches = row.dataset.search.toLowerCase().includes(search)
+                && (!department || row.dataset.departmentId === department)
+                && (!template || row.dataset.templateId === template);
+            row.hidden = !matches;
+        });
+    };
+
+    const updateRowTemplate = (employeeId, templateId, templateName) => {
+        const row = table.querySelector(`[data-employee-row][data-employee-id="${employeeId}"]`);
+        if (!row) return;
+        row.dataset.templateId = templateId;
+        const cell = row.querySelector('[data-template-cell]');
+        if (cell) cell.innerHTML = `<span class="badge badge-success" data-template-badge></span>`;
+        const badge = cell?.querySelector('[data-template-badge]');
+        if (badge) badge.textContent = templateName;
+    };
+
+    // Lắng nghe tìm kiếm & bộ lọc
+    root.addEventListener('input', event => {
+        if (event.target.matches('[data-employee-search]')) applyFilters();
+    });
+
+    root.addEventListener('change', event => {
+        if (event.target.matches('[data-department-filter], [data-template-filter]')) applyFilters();
+        if (event.target.matches('[data-select-all-employees]')) {
+            rows().filter(row => !row.hidden).forEach(row => row.querySelector('[data-employee-select]').checked = event.target.checked);
+        }
+        if (event.target.matches('[data-employee-select]')) updateBulkState();
+    });
+
+    // Lắng nghe sự kiện Click trên toàn document (Bảo đảm bắt được cả Modal nằm ngoài root)
+    document.addEventListener('click', async event => {
+        // Đóng modal áp dụng hàng loạt
+        const closeBtn = event.target.closest('[data-close-bulk-salary]');
+        if (closeBtn) {
+            const modalToClose = closeBtn.closest('.salary-modal');
+            if (modalToClose) {
+                modalToClose.hidden = true;
+                modalToClose.style.display = 'none';
+                modalToClose.style.pointerEvents = 'none';
+            } else {
+                closeAllModals();
+            }
+            return;
+        }
+
+        // Mở Modal áp dụng hàng loạt
+        const openBulk = event.target.closest('[data-open-bulk-salary]');
+        if (openBulk) {
+            showModal(bulkModal);
+            updateBulkState();
+            return;
+        }
+
+        // 5. Mở Drawer cấu hình lương cá nhân
+        const openIndividual = event.target.closest('[data-open-individual-salary]');
+        if (openIndividual) {
+            const response = await fetch(`/EmployeeSalary/GetEmployeeSalaryConfig?employeeId=${openIndividual.dataset.openIndividualSalary}`, { credentials: 'same-origin' });
+            if (!response.ok) { showMessage('Không thể tải cấu hình lương cá nhân.', false); return; }
+            drawerHost.innerHTML = await response.text();
+            return;
+        }
+    });
+
+    // Submit gán mẫu hàng loạt
+    bulkForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const data = new FormData(bulkForm);
+        const response = await fetch('/EmployeeSalary/BulkAssign', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token() },
+            body: JSON.stringify({ employeeIds: selectedRows().map(row => Number(row.dataset.employeeId)), salaryTemplateId: Number(data.get('SalaryTemplateId')), effectiveDate: data.get('EffectiveDate') })
+        });
+        const result = await readJson(response);
+        if (response.ok && result.success) {
+            result.employeeIds.forEach(id => updateRowTemplate(id, result.templateId, result.templateName));
+            selectedRows().forEach(row => row.querySelector('[data-employee-select]').checked = false);
+            table.querySelector('[data-select-all-employees]').checked = false;
+            closeAllModals();
+            updateBulkState();
+            showMessage(result.message, true);
+        } else showMessage(result.message || 'Không thể áp dụng mẫu lương.', false);
+    });
+
+    // Các sự kiện bên trong Drawer cấu hình cá nhân
+    drawerHost.addEventListener('click', event => {
+        if (event.target.closest('[data-close-individual-salary]')) drawerHost.replaceChildren();
+    });
+
+    drawerHost.addEventListener('change', async event => {
+        const select = event.target.closest('[data-individual-template]');
+        if (!select) return;
+        const form = select.closest('[data-individual-salary-form]');
+        const employeeId = form.querySelector('[name="EmployeeId"]').value;
+        const response = await fetch(`/EmployeeSalary/GetEmployeeSalaryConfig?employeeId=${employeeId}&templateId=${select.value}`, { credentials: 'same-origin' });
+        if (response.ok) drawerHost.innerHTML = await response.text();
+    });
+
+    drawerHost.addEventListener('submit', async event => {
+        const form = event.target.closest('[data-individual-salary-form]');
+        if (!form) return;
+        event.preventDefault();
+        const data = new FormData(form);
+        const components = [...form.querySelectorAll('[data-component-id]')].map(row => ({
+            componentId: Number(row.dataset.componentId),
+            amount: row.querySelector('[data-component-amount]').value === '' ? null : Number(row.querySelector('[data-component-amount]').value),
+            formula: row.querySelector('[data-component-formula]').value || null
+        }));
+        const response = await fetch('/EmployeeSalary/SaveEmployeeSalary', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': form.querySelector('[name="__RequestVerificationToken"]').value },
+            body: JSON.stringify({ employeeId: Number(data.get('EmployeeId')), salaryTemplateId: Number(data.get('SalaryTemplateId')), effectiveDate: data.get('EffectiveDate'), components })
+        });
+        const result = await readJson(response);
+        if (response.ok && result.success) {
+            updateRowTemplate(result.employeeId, result.templateId, result.templateName);
+            drawerHost.replaceChildren();
+            showMessage(result.message, true);
+        } else showMessage(result.message || 'Không thể lưu cấu hình lương.', false);
+    });
+
+    updateBulkState();
+})();
+</script>
+}
+
+<div class="salary-modal" id="salary-component-modal" data-salary-modal="component" hidden>
+    <div class="salary-modal-backdrop" data-close-salary-modal></div>
+    <form method="post" asp-page-handler="CreateComponent" class="card salary-modal-card">
+        <input type="hidden" name="ActiveTab" value="global" />
+        <input type="hidden" name="ActiveSubtab" value="components" />
+        <div class="section-head"><h3>Thêm thành phần lương</h3><button type="button" class="btn btn-secondary" data-close-salary-modal onclick="document.getElementById('salary-component-modal').hidden = true">Đóng</button></div>
+        <div class="grid grid-3"><label>Mã<input class="form-control" asp-for="ComponentForm.Code" required /></label><label>Tên khoản<input class="form-control" asp-for="ComponentForm.Name" required /></label><label>Loại<input class="form-control" asp-for="ComponentForm.Category" /></label><label>Cách tính<input class="form-control" asp-for="ComponentForm.CalculationType" /></label><label>Thuế<input class="form-control" asp-for="ComponentForm.TaxTreatment" /></label><label>Bảo hiểm<input class="form-control" asp-for="ComponentForm.InsuranceTreatment" /></label><label>Trần miễn thuế<input class="form-control" type="number" asp-for="ComponentForm.TaxExemptLimit" /></label></div>
+        <button class="btn btn-primary" type="submit">Lưu thành phần</button>
+    </form>
+</div>
+<div class="salary-modal" id="salary-template-modal" data-salary-modal="template" hidden>
+    <div class="salary-modal-backdrop" data-close-salary-modal></div>
+    <form method="post" asp-page-handler="CreateTemplate" class="card salary-modal-card">
+        <input type="hidden" name="ActiveTab" value="global" />
+        <input type="hidden" name="ActiveSubtab" value="templates" />
+        <div class="section-head"><h3>Tạo mẫu lương</h3><button type="button" class="btn btn-secondary" data-close-salary-modal onclick="document.getElementById('salary-template-modal').hidden = true">Đóng</button></div>
+        <div class="grid grid-3"><label>Mã mẫu<input class="form-control" asp-for="TemplateForm.Code" required /></label><label>Tên mẫu<input class="form-control" asp-for="TemplateForm.Name" required /></label><label>Nhóm vị trí<input class="form-control" asp-for="TemplateForm.PositionGroup" /></label></div>
+        <button class="btn btn-primary" type="submit">Lưu mẫu lương</button>
+    </form>
+</div>
+
+<div class="salary-modal" id="salary-template-details-modal" data-salary-modal="template-details" hidden>
+    <div class="salary-modal-backdrop" data-close-salary-modal></div>
+    <div class="card salary-modal-card">
+        <div class="section-head"><h3 data-template-details-title>Chi tiết mẫu lương</h3><button type="button" class="btn btn-secondary" data-close-salary-modal onclick="document.getElementById('salary-template-details-modal').hidden = true">Đóng</button></div>
+        <div class="salary-template-details">
+            <p><strong>Nhóm vị trí:</strong> <span data-template-details-group></span></p>
+            <p><strong>Thành phần:</strong> <span data-template-details-components></span></p>
+        </div>
+    </div>
+</div>
+
+<div class="salary-modal" id="salary-delete-modal" data-salary-modal="delete" hidden>
+    <div class="salary-modal-backdrop" data-close-salary-modal></div>
+    <div class="card salary-modal-card salary-delete-card">
+        <div class="section-head"><h3>Xác nhận xóa</h3><button type="button" class="btn btn-secondary" data-close-salary-modal>Đóng</button></div>
+        <p>Bạn có chắc muốn xóa <strong data-delete-name></strong> không?</p>
+        <p class="muted">Dữ liệu sẽ bị xóa vĩnh viễn và không thể khôi phục.</p>
+        <form method="post" asp-page-handler="DeleteComponent" data-delete-form>
+            <input type="hidden" name="id" data-delete-id />
+            <input type="hidden" name="ActiveTab" value="global" />
+            <input type="hidden" name="ActiveSubtab" data-delete-subtab />
+            <div class="salary-modal-actions"><button type="button" class="btn btn-secondary" data-close-salary-modal>Hủy</button><button type="submit" class="btn btn-danger">Xóa vĩnh viễn</button></div>
+        </form>
+    </div>
+</div>
+
+

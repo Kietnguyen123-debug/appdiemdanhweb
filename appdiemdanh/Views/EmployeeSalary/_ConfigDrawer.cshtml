@@ -1,0 +1,39 @@
+@model AppDiemDanh.ViewModels.EmployeeSalaryDrawerViewModel
+
+<aside class="salary-drawer" id="employee-salary-drawer" aria-label="Cấu hình lương cá nhân">
+    <div class="salary-drawer-backdrop" data-close-individual-salary></div>
+    <div class="salary-drawer-content">
+        <div class="section-head">
+            <div>
+                <p class="eyebrow">CẤU HÌNH LƯƠNG CÁ NHÂN</p>
+                <h2>@Model.EmployeeCode · @Model.FullName</h2>
+            </div>
+            <button class="btn btn-secondary" type="button" data-close-individual-salary>Đóng</button>
+        </div>
+        <form data-individual-salary-form>
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="EmployeeId" value="@Model.EmployeeId" />
+            <div class="grid grid-2">
+                <label>Mẫu lương khung<select class="form-control" name="SalaryTemplateId" data-individual-template required><option value="">Chọn mẫu lương</option>@foreach (var template in Model.Templates) { <option value="@template.Id" selected="@(Model.SalaryTemplateId == template.Id)">@template.Name</option> }</select></label>
+                <label>Ngày áp dụng<input class="form-control" type="date" name="EffectiveDate" value="@DateTime.Today.ToString("yyyy-MM-dd")" required /></label>
+            </div>
+            <div class="table-wrap" data-individual-components>
+                @if (Model.Components.Count == 0)
+                {
+                    <p class="empty">Chọn mẫu lương để hiển thị thành phần.</p>
+                }
+                else
+                {
+                    <table class="data-table"><thead><tr><th>Mã</th><th>Thành phần</th><th>Số tiền thực tế</th><th>Công thức đè</th></tr></thead><tbody>
+                    @foreach (var component in Model.Components)
+                    {
+                        <tr data-component-id="@component.ComponentId"><td>@component.Code</td><td><strong>@component.Name</strong></td><td><input class="form-control" type="number" min="0" step="0.01" data-component-amount value="@(component.Amount?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty)" /></td><td><input class="form-control" type="text" maxlength="2000" data-component-formula value="@component.Formula" /></td></tr>
+                    }
+                    </tbody></table>
+                }
+            </div>
+            <div class="salary-modal-actions"><button class="btn btn-secondary" type="button" data-close-individual-salary>Hủy</button><button class="btn btn-primary" type="submit">Lưu cấu hình</button></div>
+        </form>
+    </div>
+</aside>
+                                                            

@@ -1,0 +1,5 @@
+@page
+@model AppDiemDanh.Pages.Admin.NotificationsModel
+@{ ViewData["Title"] = "Thông báo"; }
+<div class="section-head"><div><p class="eyebrow">TRUYỀN THÔNG NỘI BỘ</p><h1>Lịch sử thông báo</h1><p class="muted">Theo dõi các thông báo FCM đã ghi nhận trong hệ thống.</p></div></div>
+<div class="card"><div class="table-wrap"><table class="data-table"><thead><tr><th>Nhân viên</th><th>Tiêu đề</th><th>Nội dung</th><th>Loại</th><th>Thời gian</th><th>Trạng thái</th></tr></thead><tbody>@foreach(var x in Model.Items){<tr><td>@x.Employee?.EmployeeCode - @x.Employee?.FullName</td><td><strong>@x.Title</strong></td><td>@x.Body</td><td>@x.Type</td><td>@x.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td><td><span class="badge @(x.IsRead?"badge-success":"badge-warning")">@(x.IsRead?"Đã đọc":"Chưa đọc")</span></td></tr>}</tbody></table></div></div>

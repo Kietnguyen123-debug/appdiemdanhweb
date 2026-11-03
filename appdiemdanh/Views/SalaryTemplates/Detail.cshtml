@@ -1,0 +1,91 @@
+@model AppDiemDanh.ViewModels.SalaryTemplateDetailViewModel
+@{
+    ViewData["Title"] = $"Cấu hình mẫu lương - {Model.Name}";
+}
+
+<div class="salary-module">
+    <div class="salary-page-header">
+        <div>
+            <p class="eyebrow">MẪU LƯƠNG KHUNG</p>
+            <h1>@Model.Name</h1>
+            <p class="muted">@Model.Code · @(Model.PositionGroup ?? "Chưa phân nhóm")</p>
+        </div>
+        <a class="btn btn-secondary" asp-action="Index">Quay lại danh sách</a>
+    </div>
+
+    <div id="save-notification" class="alert" role="status" aria-live="polite" hidden></div>
+    <form id="components-form" method="post" asp-action="SaveComponents" asp-route-id="@Model.Id">
+        @Html.AntiForgeryToken()
+        <div class="section-head salary-section-head">
+            <div><h2>Thành phần lương</h2><p class="muted">Chọn khoản áp dụng và nhập giá trị mặc định hoặc công thức đè nếu cần.</p></div>
+            <button class="btn btn-primary" type="submit">Lưu cấu hình</button>
+        </div>
+        <div class="card table-wrap">
+            <table class="data-table">
+                <thead><tr><th>Áp dụng</th><th>Mã</th><th>Tên khoản</th><th>Phân loại</th><th>Cách tính</th><th>Giá trị mặc định</th><th>Công thức đè</th></tr></thead>
+                <tbody>
+                @foreach (var component in Model.Components)
+                {
+                    <tr data-component-row data-component-id="@component.ComponentId">
+                        <td><input type="checkbox" data-selected @(component.Selected ? "checked" : null) aria-label="Chọn @component.Name" /></td>
+                        <td>@component.Code</td>
+                        <td><strong>@component.Name</strong></td>
+                        <td>@component.Category</td>
+                        <td>@component.CalculationType</td>
+                        <td><input class="form-control" type="number" step="0.01" min="0" data-default-value value="@(component.DefaultValue?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty)" /></td>
+                        <td><input class="form-control" type="text" maxlength="2000" data-formula value="@component.Formula" /></td>
+                    </tr>
+                }
+                @if (Model.Components.Count == 0)
+                {
+                    <tr><td colspan="7" class="empty">Chưa có thành phần lương đang hoạt động.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+(() => {
+    const form = document.getElementById('components-form');
+    const notification = document.getElementById('save-notification');
+    const token = form.querySelector('input[name="__RequestVerificationToken"]').value;
+
+    function showNotification(message, success) {
+        notification.textContent = message;
+        notification.className = `alert ${success ? 'alert-success' : 'alert-danger'}`;
+        notification.hidden = false;
+    }
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const components = [...form.querySelectorAll('[data-component-row]')].map(row => ({
+            componentId: Number(row.dataset.componentId),
+            selected: row.querySelector('[data-selected]').checked,
+            defaultValue: row.querySelector('[data-default-value]').value === ''
+                ? null : Number(row.querySelector('[data-default-value]').value),
+            formula: row.querySelector('[data-formula]').value || null
+        }));
+
+        const button = form.querySelector('button[type="submit"]');
+        button.disabled = true;
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+                body: JSON.stringify({ components })
+            });
+            const result = await response.json();
+            showNotification(result.message || 'Không thể lưu cấu hình.', response.ok && result.success === true);
+        } catch {
+            showNotification('Không thể kết nối đến máy chủ. Vui lòng thử lại.', false);
+        } finally {
+            button.disabled = false;
+        }
+    });
+})();
+</script>
+}

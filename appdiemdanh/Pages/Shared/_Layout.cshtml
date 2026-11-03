@@ -1,0 +1,441 @@
+@using AppDiemDanh.Services
+@inject IPermissionService PermissionService
+@{
+    var adminEmployeeId = Context.Session.GetInt32("AdminEmployeeId");
+    var canUseAdminChatbot = adminEmployeeId.HasValue && await PermissionService.HasPermissionAsync(adminEmployeeId.Value, "AdminChatbot", "Use");
+    var isAdmin = string.Equals(Context.Session.GetString("AdminRole"), "Admin", StringComparison.OrdinalIgnoreCase);
+
+    var canViewDashboard = adminEmployeeId.HasValue && await PermissionService.HasPermissionAsync(adminEmployeeId.Value, "Dashboard", "View");
+    var canViewEmployees = adminEmployeeId.HasValue && await PermissionService.HasPermissionAsync(adminEmployeeId.Value, "Employees", "View");
+    var canViewDepartments = adminEmployeeId.HasValue && await PermissionService.HasPermissionAsync(adminEmployeeId.Value, "Departments", "View");
+    var canViewBranches = adminEmployeeId.HasValue && await PermissionService.HasPermissionAsync(adminEmployeeId.Value, "Branches", "View");
+    var canViewAttendance = adminEmployeeId.HasValue && await PermissionService.HasPermissionAsync(adminEmployeeId.Value, "Attendance", "View");
+    var canViewShifts = adminEmployeeId.HasValue && await PermissionService.HasPermissionAsync(adminEmployeeId.Value, "Shifts", "View");
+    var canViewLeaves = adminEmployeeId.HasValue && await PermissionService.HasPermissionAsync(adminEmployeeId.Value, "Leave", "View");
+    var canViewExplanations = adminEmployeeId.HasValue && await PermissionService.HasPermissionAsync(adminEmployeeId.Value, "Explanations", "View");
+    var canViewNetwork = adminEmployeeId.HasValue && await PermissionService.HasPermissionAsync(adminEmployeeId.Value, "Network", "View");
+    var canViewPaymentConfig = adminEmployeeId.HasValue && await PermissionService.HasPermissionAsync(adminEmployeeId.Value, "Payroll", "View");
+    var canViewPayroll = adminEmployeeId.HasValue && await PermissionService.HasPermissionAsync(adminEmployeeId.Value, "Payroll", "View");
+    var canViewSalaryConfig = adminEmployeeId.HasValue && await PermissionService.HasPermissionAsync(adminEmployeeId.Value, "SalaryConfig", "View");
+    var canViewOvertime = adminEmployeeId.HasValue && await PermissionService.HasPermissionAsync(adminEmployeeId.Value, "Overtime", "View");
+    var canViewAdvances = adminEmployeeId.HasValue && await PermissionService.HasPermissionAsync(adminEmployeeId.Value, "Advances", "View");
+    var canViewNotifications = adminEmployeeId.HasValue && await PermissionService.HasPermissionAsync(adminEmployeeId.Value, "Notifications", "View");
+}
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] - HRM Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+<div class="admin-shell">
+    <aside class="sidebar">
+        <div class="sidebar-brand"><span class="brand-mark small">AD</span><span>HRM Admin</span></div>
+        @if (canViewDashboard)
+        {
+            <div class="sidebar-label">TỔNG QUAN</div>
+            <a class="nav-link" data-admin-nav href="/Admin/Index">⌂ <span>Dashboard</span></a>
+        }
+        @if (canViewEmployees || canViewDepartments || canViewBranches || canViewAttendance || canViewShifts || canViewLeaves || canViewExplanations || canViewNetwork)
+        {
+            <div class="sidebar-label">QUẢN TRỊ NHÂN SỰ</div>
+            @if (canViewEmployees)
+            {
+                <a class="nav-link" data-admin-nav href="/Admin/Employees">♙ <span>Nhân viên</span></a>
+            }
+            @if (canViewDepartments)
+            {
+                <a class="nav-link" data-admin-nav href="/Admin/Departments">▤ <span>Phòng ban</span></a>
+            }
+            @if (canViewBranches)
+            {
+                <a class="nav-link" data-admin-nav href="/Admin/Branches">◈ <span>Chi nhánh</span></a>
+            }
+            @if (canViewAttendance)
+            {
+                <a class="nav-link" data-admin-nav href="/Admin/Attendance">◷ <span>Chấm công</span></a>
+            }
+            @if (canViewShifts)
+            {
+                <a class="nav-link" data-admin-nav href="/Admin/Shifts/Management">↔ <span>Quản lý phân ca</span></a>
+            }
+            @if (canViewLeaves)
+            {
+                <a class="nav-link" data-admin-nav href="/Admin/Leaves">▣ <span>Nghỉ phép</span></a>
+            }
+            @if (canViewExplanations)
+            {
+                <a class="nav-link" data-admin-nav href="/Admin/Explanations">✎ <span>Giải trình</span></a>
+            }
+            @if (canViewNetwork)
+            {
+                <a class="nav-link" data-admin-nav href="/Admin/Network">⌁ <span>Cấu hình mạng</span></a>
+            }
+        }
+        @if (canViewPaymentConfig || canViewPayroll || canViewSalaryConfig || canViewOvertime || canViewAdvances || canViewNotifications)
+        {
+            <div class="sidebar-label">LƯƠNG & PHÚC LỢI</div>
+            @if (canViewPaymentConfig)
+            {
+                <a class="nav-link" data-admin-nav href="/Admin/PaymentConfig">♢ <span>Thông tin thanh toán</span></a>
+            }
+            @if (canViewPayroll)
+            {
+                <a class="nav-link" data-admin-nav href="/Admin/Payroll">₫ <span>Bảng lương</span></a>
+            }
+            @if (canViewSalaryConfig)
+            {
+                <a class="nav-link" data-admin-nav data-full-navigation="true" href="/Admin/SalaryConfig">⚙ <span>Quản lý cấu hình lương</span></a>
+            }
+            @if (canViewOvertime)
+            {
+                <a class="nav-link" data-admin-nav href="/Admin/Overtime">⏱ <span>Làm thêm giờ</span></a>
+            }
+            @if (canViewAdvances)
+            {
+                <a class="nav-link" data-admin-nav href="/Admin/Advances">↗ <span>Tạm ứng lương</span></a>
+            }
+            @if (canViewNotifications)
+            {
+                <a class="nav-link" data-admin-nav href="/Admin/Notifications">♢ <span>Thông báo</span></a>
+            }
+        }
+        @if (isAdmin)
+        {
+            <a class="nav-link" data-admin-nav href="/Admin/Permissions">☷ <span>Phân quyền</span></a>
+        }
+        @if (canUseAdminChatbot)
+        {
+            <a class="nav-link" href="#admin-chatbot" data-chatbot-nav style="display: flex; align-items: center; gap: 8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2V5" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" />
+                    <circle cx="12" cy="2" r="1" fill="#38BDF8" />
+                    <rect x="2" y="10" width="2" height="5" rx="1" fill="#2563EB" />
+                    <rect x="20" y="10" width="2" height="5" rx="1" fill="#2563EB" />
+                    <rect x="4" y="5" width="16" height="15" rx="4" fill="url(#bot_nav_grad)" />
+                    <rect x="6.5" y="7.5" width="11" height="9.5" rx="2" fill="#0F172A" />
+                    <circle cx="9.5" cy="11.5" r="1.25" fill="#38BDF8" />
+                    <circle cx="14.5" cy="11.5" r="1.25" fill="#38BDF8" />
+                    <path d="M10 14C10 14 11 15.2 12 15.2C13 15.2 14 14 14 14" stroke="#38BDF8" stroke-width="1.2" stroke-linecap="round" />
+                    <defs>
+                        <linearGradient id="bot_nav_grad" x1="4" y1="5" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#3B82F6" />
+                            <stop offset="1" stop-color="#1D4ED8" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <span>Trợ lý AI</span>
+            </a>
+        }
+        <div class="sidebar-bottom"><a class="nav-link" href="/swagger">⚙ <span>API Swagger</span></a><a class="nav-link" asp-page="/Admin/Logout">↪ <span>Đăng xuất</span></a></div>
+    </aside>
+    <main class="main-content">
+        <header class="topbar"><button class="mobile-menu" onclick="document.body.classList.toggle('sidebar-open')">☰</button><div><span class="topbar-kicker">HRM • ADMIN PORTAL</span><h2>@ViewData["Title"]</h2></div><div class="user-chip"><span class="avatar">@(Context.Session.GetString("AdminEmployeeName")?.FirstOrDefault() ?? 'A')</span><span>@Context.Session.GetString("AdminEmployeeName")</span><small>@Context.Session.GetString("AdminRole")</small></div></header>
+        <section class="page-content" id="admin-content">@RenderBody()</section>
+    </main>
+</div>
+@if (canUseAdminChatbot)
+{
+    <section class="admin-chatbot" id="admin-chatbot" data-token="@Context.Session.GetString("AdminJwtToken")">
+            <button class="admin-chatbot-toggle" id="admin-chatbot-toggle" type="button" aria-label="Mở trợ lý HR">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Ăng-ten -->
+                    <path d="M12 2V5" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" />
+                    <circle cx="12" cy="2" r="1.25" fill="#38BDF8" />
+                    <!-- Tai 2 bên -->
+                    <rect x="2" y="10" width="2" height="5" rx="1" fill="#2563EB" />
+                    <rect x="20" y="10" width="2" height="5" rx="1" fill="#2563EB" />
+                    <!-- Đầu Robot -->
+                    <rect x="4" y="5" width="16" height="15" rx="4" fill="url(#bot_body_grad)" />
+                    <!-- Màn hình mặt -->
+                    <rect x="6.5" y="7.5" width="11" height="9.5" rx="2" fill="#0F172A" />
+                    <!-- Mắt phát sáng -->
+                    <circle cx="9.5" cy="11.5" r="1.25" fill="#38BDF8" />
+                    <circle cx="14.5" cy="11.5" r="1.25" fill="#38BDF8" />
+                    <!-- Miệng cười -->
+                    <path d="M10 14C10 14 11 15.2 12 15.2C13 15.2 14 14 14 14" stroke="#38BDF8" stroke-width="1.2" stroke-linecap="round" />
+                    <!-- Gradient xanh -->
+                    <defs>
+                        <linearGradient id="bot_body_grad" x1="4" y1="5" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#3B82F6" />
+                            <stop offset="1" stop-color="#1D4ED8" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </button>
+        <div class="admin-chatbot-panel" hidden>
+                <header class="admin-chatbot-header">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2V5" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" />
+                            <circle cx="12" cy="2" r="1" fill="#38BDF8" />
+                            <rect x="2" y="10" width="2" height="5" rx="1" fill="#2563EB" />
+                            <rect x="20" y="10" width="2" height="5" rx="1" fill="#2563EB" />
+                            <rect x="4" y="5" width="16" height="15" rx="4" fill="url(#bot_head_grad)" />
+                            <rect x="6.5" y="7.5" width="11" height="9.5" rx="2" fill="#0F172A" />
+                            <circle cx="9.5" cy="11.5" r="1.25" fill="#38BDF8" />
+                            <circle cx="14.5" cy="11.5" r="1.25" fill="#38BDF8" />
+                            <path d="M10 14C10 14 11 15.2 12 15.2C13 15.2 14 14 14 14" stroke="#38BDF8" stroke-width="1.2" stroke-linecap="round" />
+                            <defs>
+                                <linearGradient id="bot_head_grad" x1="4" y1="5" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+                                    <stop stop-color="#3B82F6" />
+                                    <stop offset="1" stop-color="#1D4ED8" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                        <div>
+                            <strong>Trợ lý HR</strong>
+                            <small>AI Admin Assistant</small>
+                        </div>
+                    </div>
+                    <button type="button" class="admin-chatbot-close" aria-label="Đóng">×</button>
+                </header>
+            <div class="admin-chatbot-messages" id="admin-chatbot-messages" aria-live="polite">
+                <div class="admin-chatbot-message assistant">Xin chào. Em có thể hỗ trợ báo cáo chấm công, đơn chờ duyệt, nhân viên và tổng quan lương.</div>
+            </div>
+            <form class="admin-chatbot-form" id="admin-chatbot-form">
+                <textarea id="admin-chatbot-input" rows="2" maxlength="2000" placeholder="Ví dụ: Báo cáo điểm danh hôm nay..." required></textarea>
+                <button class="btn btn-primary" type="submit">Gửi</button>
+            </form>
+        </div>
+    </section>
+}
+<div id="delete-confirm" class="delete-confirm" hidden>
+    <div class="delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
+        <div class="delete-icon">!</div>
+        <h3 id="delete-confirm-title">Xác nhận xóa</h3>
+        <p id="delete-confirm-message">Dữ liệu đã xóa không thể khôi phục.</p>
+        <div class="toolbar delete-actions">
+            <button type="button" class="btn btn-secondary" data-delete-cancel>Hủy</button>
+            <button type="button" class="btn btn-danger" data-delete-confirm>Xóa dữ liệu</button>
+        </div>
+    </div>
+</div>
+<script>
+    (() => {
+        const content = document.getElementById('admin-content');
+        const overlay = document.getElementById('delete-confirm');
+        const message = document.getElementById('delete-confirm-message');
+        const scrollStorageKey = `admin-scroll-position:${window.location.href}`;
+        let pendingForm;
+
+        const saveScrollPosition = () => {
+            try {
+                sessionStorage.setItem(scrollStorageKey, JSON.stringify({ x: window.scrollX, y: window.scrollY }));
+            } catch {
+            }
+        };
+
+        const restoreScrollPosition = () => {
+            try {
+                const savedPosition = sessionStorage.getItem(scrollStorageKey);
+                if (!savedPosition) return;
+                const position = JSON.parse(savedPosition);
+                sessionStorage.removeItem(scrollStorageKey);
+                requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo({ left: position.x, top: position.y, behavior: 'auto' })));
+            } catch {
+            }
+        };
+
+        const setActive = url => {
+            const current = new URL(url, window.location.origin).pathname.toLowerCase();
+            document.querySelectorAll('[data-admin-nav]').forEach(link => {
+                const target = new URL(link.href, window.location.origin).pathname.toLowerCase();
+                link.classList.toggle('active', current === target || (target !== '/admin' && current.startsWith(`${target}/`)));
+            });
+        };
+
+        const pasteBssid = async button => {
+            const input = document.getElementById('wifi-bssid');
+            const status = document.getElementById('bssid-status');
+            if (!input) return;
+            button.disabled = true;
+            if (status) status.textContent = 'Đang đọc BSSID từ clipboard...';
+            try {
+                const value = (await navigator.clipboard.readText()).trim().replace(/-/g, ':').toUpperCase();
+                if (!/^([0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(value)) throw new Error('Clipboard không chứa BSSID hợp lệ.');
+                input.value = value;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                if (status) status.textContent = `Đã gán BSSID: ${value}`;
+            } catch {
+                if (status) status.textContent = 'Không đọc được clipboard. Hãy cấp quyền hoặc nhập BSSID thủ công.';
+            } finally {
+                button.disabled = false;
+            }
+        };
+
+        const detectPublicIp = async button => {
+            const input = document.getElementById('public-ip');
+            if (!input) return;
+            button.disabled = true;
+            button.textContent = 'Đang lấy...';
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                if (!response.ok) throw new Error('Không thể lấy IP.');
+                const data = await response.json();
+                input.value = data.ip || '';
+            } catch {
+                alert('Không thể tự động lấy IP. Vui lòng nhập thủ công.');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Tự động lấy IP';
+            }
+        };
+
+        const bindContent = () => {
+            document.querySelectorAll('[data-delete-form]').forEach(form => {
+                form.addEventListener('submit', event => {
+                    event.preventDefault();
+                    pendingForm = form;
+                    message.textContent = form.dataset.deleteMessage || 'Dữ liệu đã xóa không thể khôi phục.';
+                    overlay.hidden = false;
+                });
+            });
+        };
+
+        const navigate = async (url, push = true) => {
+            const targetUrl = new URL(url, window.location.origin);
+            if (targetUrl.origin !== window.location.origin || !targetUrl.pathname.toLowerCase().startsWith('/admin/')) {
+                window.location.href = targetUrl.href;
+                return;
+            }
+            const pasteBssidButton = event.target.closest('#paste-bssid');
+            if (pasteBssidButton) {
+                event.preventDefault();
+                pasteBssid(pasteBssidButton);
+                return;
+            }
+            const targetPath = `${targetUrl.pathname}${targetUrl.search}`;
+            content.classList.add('is-loading');
+            try {
+                const response = await fetch(targetPath, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                if (!response.ok) throw new Error('Không thể tải trang.');
+                const html = await response.text();
+                const documentParser = new DOMParser().parseFromString(html, 'text/html');
+                const nextContent = documentParser.querySelector('#admin-content, .page-content');
+                if (!nextContent) throw new Error('Nội dung trang không hợp lệ.');
+                content.innerHTML = nextContent.innerHTML;
+                const nextTitle = documentParser.querySelector('title');
+                if (nextTitle) document.title = nextTitle.textContent;
+                if (push) history.pushState({}, '', targetPath);
+                setActive(targetPath);
+                bindContent();
+                document.body.classList.remove('sidebar-open');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } catch {
+                window.location.href = url;
+            } finally {
+                content.classList.remove('is-loading');
+            }
+        };
+
+        document.addEventListener('click', event => {
+            const detectIpButton = event.target.closest('#detect-ip');
+            if (detectIpButton) {
+                event.preventDefault();
+                detectPublicIp(detectIpButton);
+                return;
+            }
+            const link = event.target.closest('a[data-admin-nav]');
+             if (!link || link.dataset.fullNavigation === 'true' || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            event.preventDefault();
+            navigate(link.getAttribute('href'));
+        });
+        document.addEventListener('submit', saveScrollPosition, true);
+        window.addEventListener('pagehide', saveScrollPosition);
+        window.addEventListener('popstate', () => navigate(window.location.pathname + window.location.search, false));
+        document.querySelector('[data-delete-cancel]')?.addEventListener('click', () => { overlay.hidden = true; pendingForm = null; });
+        document.querySelector('[data-delete-confirm]')?.addEventListener('click', () => { if (pendingForm) { saveScrollPosition(); pendingForm.submit(); } });
+        setActive(window.location.href);
+        bindContent();
+        restoreScrollPosition();
+    })();
+</script>
+<script>
+    (() => {
+        const root = document.getElementById('admin-chatbot');
+        if (!root) return;
+        const toggle = document.getElementById('admin-chatbot-toggle');
+        const panel = root.querySelector('.admin-chatbot-panel');
+        const close = root.querySelector('.admin-chatbot-close');
+        const form = document.getElementById('admin-chatbot-form');
+        const input = document.getElementById('admin-chatbot-input');
+        const messages = document.getElementById('admin-chatbot-messages');
+        const history = [];
+        const addMessage = (text, role, renderMarkdown = false) => {
+            const element = document.createElement('div');
+            element.className = `admin-chatbot-message ${role}${renderMarkdown ? ' chat-bubble' : ''}`;
+            if (renderMarkdown) {
+                element.innerHTML = marked.parse(text);
+            } else {
+                element.textContent = text;
+            }
+            messages.appendChild(element);
+            messages.scrollTop = messages.scrollHeight;
+            history.push({ role: role === 'user' ? 'user' : 'model', text });
+        };
+        toggle.addEventListener('click', () => { panel.hidden = !panel.hidden; if (!panel.hidden) input.focus(); });
+         document.querySelector('[data-chatbot-nav]')?.addEventListener('click', event => {
+             event.preventDefault();
+             panel.hidden = false;
+             input.focus();
+         });
+        close.addEventListener('click', () => { panel.hidden = true; });
+         input.addEventListener('keydown', event => {
+             if (event.key === 'Enter' && !event.shiftKey) {
+                 event.preventDefault();
+                 form.requestSubmit();
+             }
+         });
+        form.addEventListener('submit', async event => {
+            event.preventDefault();
+            const text = input.value.trim();
+            if (!text) return;
+             const token = root.dataset.token;
+             if (!token) {
+                 addMessage('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'assistant');
+                 return;
+             }
+            addMessage(text, 'user');
+            input.value = '';
+            const button = form.querySelector('button');
+            button.disabled = true;
+            addMessage('Đang xử lý...', 'assistant');
+            const loading = messages.lastElementChild;
+            try {
+                const response = await fetch('/api/admin-chatbot/chat', {
+                    method: 'POST',
+                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ message: text, history: history.slice(-9, -1) })
+                });
+                 const responseText = await response.text();
+                 let data = {};
+                 if (responseText.trim()) {
+                     try {
+                         data = JSON.parse(responseText);
+                     } catch {
+                         data = { message: responseText };
+                     }
+                 }
+                 if (!response.ok) throw new Error(data.message || data.reply || `Không thể gửi yêu cầu (HTTP ${response.status}).`);
+                 if (data.success === false) throw new Error(data.reply || data.message || 'Trợ lý không thể xử lý yêu cầu.');
+                 loading.remove();
+                 addMessage(data.reply || 'Không nhận được phản hồi.', 'assistant', true);
+                if (data.executedAction) addMessage(`Đã thực hiện: ${data.executedAction}`, 'assistant');
+            } catch (error) {
+                loading.textContent = error.message || 'Có lỗi xảy ra. Vui lòng thử lại.';
+                 loading.classList.add('error');
+            } finally { button.disabled = false; input.focus(); }
+        });
+    })();
+</script>
+<script src="~/js/salary-config.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

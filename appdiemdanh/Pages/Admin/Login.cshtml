@@ -1,0 +1,46 @@
+@page
+@model AppDiemDanh.Pages.Admin.LoginModel
+@{
+    Layout = null;
+}
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Đăng nhập quản trị</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+</head>
+<body class="login-page">
+    <main class="login-card">
+        <div class="brand-mark">AD</div>
+        <p class="eyebrow">HRM CONTROL CENTER</p>
+        <h1>Đăng nhập quản trị</h1>
+        <p class="muted">Sử dụng tài khoản Admin,HR,Manager để truy cập hệ thống.</p>
+        <form method="post" id="admin-login-form">
+            <label>Mã nhân viên</label>
+            <input asp-for="EmployeeCode" autocomplete="username" />
+            <span asp-validation-for="EmployeeCode" class="field-error"></span>
+            <label>Mật khẩu</label>
+            <input asp-for="Password" type="password" autocomplete="current-password" />
+            <span asp-validation-for="Password" class="field-error"></span>
+            @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+            {
+                <div class="alert alert-danger">@Model.ErrorMessage</div>
+            }
+            <button class="btn btn-primary btn-block" type="submit">Đăng nhập</button>
+        </form>
+    </main>
+    <script>
+        document.querySelector('#admin-login-form')?.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                event.currentTarget.requestSubmit();
+            }
+        });
+    </script>
+</body>
+</html>

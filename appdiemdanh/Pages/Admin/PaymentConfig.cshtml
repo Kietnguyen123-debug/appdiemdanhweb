@@ -1,0 +1,196 @@
+﻿@page
+@model AppDiemDanh.Pages.Admin.PaymentConfigModel
+@{
+    ViewData["Title"] = "Quản lý Thông tin Thanh toán";
+}
+
+<div class="section-head">
+    <div>
+        <p class="eyebrow">QUẢN LÝ TÀI CHÍNH</p>
+        <h1>Quản lý Thông tin Thanh toán</h1>
+        <p class="muted">Danh sách tài khoản ngân hàng và phương thức chi trả lương cho nhân viên.</p>
+    </div>
+
+    <form class="toolbar" method="get">
+        <select class="form-control" style="min-width: 180px;" asp-for="BranchId" onchange="this.form.submit()">
+            <option value="">-- Tất cả chi nhánh --</option>
+            @foreach (var branch in Model.Branches)
+            {
+                <option value="@branch.Id">@branch.Name</option>
+            }
+        </select>
+
+        <input type="text" class="form-control" style="width: 200px;" asp-for="SearchTerm" placeholder="Tìm theo tên/mã NV..." />
+        <button class="btn btn-primary" type="submit">Tìm kiếm</button>
+    </form>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.Message))
+{
+    <div class="alert @(Model.IsError ? "alert-danger" : "alert-success") mb-4" style="padding: 12px 16px; border-radius: 8px; font-weight: 500; display: flex; align-items: center; gap: 8px; @(Model.IsError ? "background:#fee2e2; color:#991b1b; border:1px solid #fca5a5;" : "background:#d1fae5; color:#065f46; border:1px solid #6ee7b7;")">
+        <span>@(Model.IsError ? "⚠️" : "✅")</span>
+        <span>@Model.Message</span>
+    </div>
+}
+
+<div class="card mb-4">
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>STT</th>
+                    <th>Nhân viên</th>
+                    <th>Chi nhánh</th>
+                    <th>Hình thức</th>
+                    <th>Tên ngân hàng</th>
+                    <th>Số tài khoản</th>
+                    <th>Chủ tài khoản</th>
+                    <th style="text-align: center;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ int stt = 1; }
+                @foreach (var x in Model.Employees)
+                {
+                    <tr>
+                        <td>@(stt++)</td>
+                        <td><strong>@x.EmployeeCode</strong><br />@x.FullName</td>
+                        <td>@x.BranchName</td>
+                        <td>
+                            @if (x.PaymentMethod == "BankTransfer")
+                            {
+                                <span class="badge" style="background-color: #d1fae5; color: #065f46; padding: 4px 8px; border-radius: 4px; font-weight: 600;">🏦 Chuyển khoản</span>
+                            }
+                            else
+                            {
+                                <span class="badge" style="background-color: #f3f4f6; color: #374151; padding: 4px 8px; border-radius: 4px; font-weight: 600;">💵 Tiền mặt</span>
+                            }
+                        </td>
+                        <td>@(x.PaymentMethod == "BankTransfer" ? (x.BankName ?? "Chưa cập nhật") : "—")</td>
+                        <td>
+                            @if (x.PaymentMethod == "BankTransfer")
+                            {
+                                <strong style="font-family: monospace;">@(string.IsNullOrEmpty(x.BankAccountNo) ? "Chưa có STK" : x.BankAccountNo)</strong>
+                            }
+                            else
+                            {
+                                <span class="muted">—</span>
+                            }
+                        </td>
+                        <td>@(x.PaymentMethod == "BankTransfer" ? (x.BankAccountHolder ?? x.FullName) : "—")</td>
+                        <td style="text-align: center;">
+                            <button class="btn btn-sm btn-outline-secondary" type="button"
+                                    data-open-payment-modal
+                                    data-id="@x.EmployeeId"
+                                    data-code="@x.EmployeeCode"
+                                    data-name="@x.FullName"
+                                    data-method="@x.PaymentMethod"
+                                    data-bank="@(x.BankName ?? "")"
+                                    data-account="@(x.BankAccountNo ?? "")"
+                                    data-holder="@(x.BankAccountHolder ?? x.FullName)">
+                                ✏️ Cập nhật
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL CẬP NHẬT THÔNG TIN THANH TOÁN (AN TOÀN 100%, KHÔNG KẸT MODAL) -->
+<div id="paymentModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.45); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:12px; width:90%; max-width:500px; padding:24px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1); position:relative; box-sizing:border-box;">
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:12px; margin-bottom:16px;">
+            <h3 style="margin:0; font-size:1.1rem; font-weight:700; color:#0f172a;" id="modalEmpTitle">Cập nhật thông tin thanh toán</h3>
+            <button type="button" data-close-payment-modal style="border:none; background:none; font-size:1.3rem; cursor:pointer; color:#94a3b8; line-height:1;">✕</button>
+        </div>
+
+        <form method="post" asp-page-handler="Save">
+            <!-- Dùng name="Input.EmployeeId" chuẩn binding, id="modalEmpId" chuẩn JS -->
+            <input type="hidden" id="modalEmpId" name="Input.EmployeeId" />
+
+            <div class="form-group mb-3">
+                <label class="form-label" style="font-weight:600; margin-bottom:6px; display:block; color:#334155;">Hình thức chi trả</label>
+                <select class="form-control" name="Input.PaymentMethod" id="modalPaymentMethod" onchange="toggleModalBankFields()" style="width:100%; height:42px;">
+                    <option value="BankTransfer">🏦 Chuyển khoản ngân hàng</option>
+                    <option value="Cash">💵 Tiền mặt</option>
+                </select>
+            </div>
+
+            <div id="modalBankGroup">
+                <div class="form-group mb-3">
+                    <label class="form-label" style="font-weight:600; margin-bottom:6px; display:block; color:#334155;">Tên ngân hàng</label>
+                    <input type="text" class="form-control" name="Input.BankName" id="modalBankName" placeholder="VD: Vietcombank, MB Bank..." style="width:100%;" />
+                </div>
+
+                <div class="form-group mb-3">
+                    <label class="form-label" style="font-weight:600; margin-bottom:6px; display:block; color:#334155;">Số tài khoản</label>
+                    <input type="text" class="form-control" name="Input.BankAccountNo" id="modalBankAccountNo" placeholder="Nhập số tài khoản" style="width:100%; font-family:monospace;" />
+                </div>
+
+                <div class="form-group mb-3">
+                    <label class="form-label" style="font-weight:600; margin-bottom:6px; display:block; color:#334155;">Chủ tài khoản</label>
+                    <input type="text" class="form-control" name="Input.BankAccountHolder" id="modalBankAccountHolder" placeholder="VD: NGUYEN VAN A" style="width:100%; text-transform:uppercase;" />
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px; padding-top:12px; border-top:1px solid #f8fafc;">
+                <button type="button" class="btn btn-secondary" data-close-payment-modal>Hủy</button>
+                <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function toggleModalBankFields() {
+        const select = document.getElementById('modalPaymentMethod');
+        const group = document.getElementById('modalBankGroup');
+        if (select && group) {
+            group.style.display = (select.value === 'Cash') ? 'none' : 'block';
+        }
+    }
+
+    function closePaymentModal() {
+        const modal = document.getElementById('paymentModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('[data-open-payment-modal]');
+        if (btn) {
+            const empId = document.getElementById('modalEmpId');
+            const title = document.getElementById('modalEmpTitle');
+            const method = document.getElementById('modalPaymentMethod');
+            const bank = document.getElementById('modalBankName');
+            const account = document.getElementById('modalBankAccountNo');
+            const holder = document.getElementById('modalBankAccountHolder');
+
+            if (empId) empId.value = btn.dataset.id || '';
+            if (title) title.innerText = 'Cập nhật ngân hàng: ' + (btn.dataset.code || '') + ' - ' + (btn.dataset.name || '');
+            if (method) method.value = btn.dataset.method || 'BankTransfer';
+            if (bank) bank.value = btn.dataset.bank || '';
+            if (account) account.value = btn.dataset.account || '';
+            if (holder) holder.value = btn.dataset.holder || btn.dataset.name || '';
+
+            toggleModalBankFields();
+
+            const modal = document.getElementById('paymentModal');
+            if (modal) modal.style.display = 'flex';
+            return;
+        }
+
+        const modal = document.getElementById('paymentModal');
+        if (modal && modal.style.display === 'flex') {
+            if (e.target === modal || e.target.closest('[data-close-payment-modal]')) {
+                closePaymentModal();
+            }
+        }
+    });
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closePaymentModal();
+    });
+</script>

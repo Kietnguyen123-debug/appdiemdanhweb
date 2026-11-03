@@ -1,0 +1,184 @@
+@page "{id:int}"
+@model AppDiemDanh.Pages.Admin.Employees.EditModel
+@{
+    ViewData["Title"] = "Sửa nhân viên";
+}
+
+<div class="section-head">
+    <div>
+        <p class="eyebrow">QUẢN LÝ NHÂN SỰ</p>
+        <h1>Sửa thông tin nhân viên</h1>
+    </div>
+
+    <a class="btn btn-secondary"
+       asp-page="/Admin/Employees">
+        ← Về danh sách
+    </a>
+</div>
+
+@if (Model.ErrorMessage != null)
+{
+    <div class="alert alert-danger">
+        @Model.ErrorMessage
+    </div>
+}
+
+@if (Model.SuccessMessage != null)
+{
+    <div class="alert alert-success">
+        @Model.SuccessMessage
+    </div>
+}
+
+<div class="card">
+
+    <form method="post" class="grid grid-2">
+
+        <div>
+            <label>Mã nhân viên</label>
+
+            <input class="form-control"
+                   asp-for="Input.EmployeeCode"
+                   required
+                   maxlength="50" />
+        </div>
+
+        <div>
+            <label>Họ và tên</label>
+
+            <input class="form-control"
+                   asp-for="Input.FullName"
+                   required
+                   maxlength="200" />
+        </div>
+
+        <div>
+            <label>Email</label>
+
+            <input class="form-control"
+                   asp-for="Input.Email"
+                   type="email"
+                   maxlength="320"
+                   placeholder="nhanvien@example.com" />
+
+            <small class="muted">
+                Thay đổi email sẽ yêu cầu xác minh OTP lại.
+            </small>
+        </div>
+
+        <div>
+            <label>Vai trò</label>
+
+            <select class="form-control"
+                    asp-for="Input.Role"
+                    required>
+
+                <option value="Employee">
+                    Employee
+                </option>
+
+                <option value="Manager">
+                    Manager
+                </option>
+
+                <option value="HR">
+                    HR
+                </option>
+
+                <option value="Admin">
+                    Admin
+                </option>
+
+            </select>
+        </div>
+
+        <div>
+            <label>Chi nhánh</label>
+
+            <select class="form-control"
+                    asp-for="Input.BranchId"
+                    required>
+
+                @foreach (var x in Model.Branches)
+                {
+                    <option value="@x.Id">
+                        @x.Name
+                    </option>
+                }
+
+            </select>
+        </div>
+
+        <div>
+            <label>Phòng ban</label>
+
+            <select class="form-control"
+                    asp-for="Input.DepartmentId">
+
+                <option value="">
+                    -- Chưa phân phòng ban --
+                </option>
+
+                @foreach (var x in Model.Departments)
+                {
+                    <option value="@x.Id">
+                        @x.Name
+                    </option>
+                }
+
+            </select>
+        </div>
+
+        <div>
+            <label>Trạng thái</label>
+
+            <select class="form-control"
+                    asp-for="Input.IsActive">
+
+                <option value="true">
+                    Hoạt động
+                </option>
+
+                <option value="false">
+                    Đã khóa
+                </option>
+
+            </select>
+        </div>
+
+        <div>
+            <label>
+                Mật khẩu tạm mới
+            </label>
+
+            <input class="form-control"
+                   asp-for="NewTemporaryPassword"
+                   type="password"
+                   minlength="6"
+                   maxlength="128"
+                   autocomplete="new-password"
+                   placeholder="Để trống nếu không muốn thay đổi" />
+
+            <small class="muted">
+                Chỉ nhập khi muốn reset mật khẩu.
+                Mật khẩu phải có từ 6 đến 128 ký tự.
+            </small>
+        </div>
+
+        <div class="toolbar" style="align-items:end">
+
+            <button type="submit"
+                    class="btn btn-primary">
+                Lưu thay đổi
+            </button>
+
+            <a class="btn btn-secondary"
+               asp-page="/Admin/Employees">
+                Hủy
+            </a>
+
+        </div>
+
+    </form>
+
+</div>

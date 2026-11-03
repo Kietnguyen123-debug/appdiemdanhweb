@@ -1,0 +1,74 @@
+@page
+@model AppDiemDanh.Pages.Admin.ShiftsModel
+@{ ViewData["Title"] = "Quản lý phân ca"; }
+<div class="section-head"><div><p class="eyebrow">LỊCH LÀM VIỆC</p><h1>Quản lý phân ca</h1><p class="muted">Vận hành lịch theo nhóm và chỉ ghi đè khi phát sinh ngoại lệ cá nhân.</p></div><div class="toolbar"><a class="btn btn-primary" asp-page="/Admin/Shifts/Create">+ Tạo ca</a><a class="btn btn-secondary" asp-page="/Admin/Shifts/Assign">Phân ca cá nhân cũ</a></div></div>
+@if(Model.Message != null){<div class="alert alert-success">@Model.Message</div>}
+<div class="card"><div class="section-head"><h3>Danh sách ca</h3></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Mã</th><th>Tên ca</th><th>Bắt đầu</th><th>Kết thúc</th><th>Thao tác</th></tr></thead><tbody>@foreach(var x in Model.Shifts){<tr><td><strong>@x.ShiftCode</strong></td><td>@x.ShiftName</td><td>@x.StartTime</td><td>@x.EndTime</td><td><div class="toolbar"><a class="btn btn-secondary" asp-page="/Admin/Shifts/Edit" asp-route-id="@x.Id">Sửa</a><form method="post" asp-page-handler="Delete" asp-route-id="@x.Id" data-delete-form data-delete-message="Bạn có chắc muốn xóa ca @x.ShiftName không?"><button class="btn btn-danger" type="submit">Xóa</button></form></div></td></tr>}</tbody></table></div></div>
+<div class="card" style="margin-top:20px">
+    <div class="section-head">
+        <div>
+            <h3>Danh sách phân ca nhân viên</h3>
+            <p class="muted">Theo dõi ca làm việc đang và đã được gán cho nhân viên.</p>
+        </div>
+        <a class="btn btn-primary" asp-page="/Admin/Shifts/Assign">+ Phân ca</a>
+    </div>
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nhân viên</th>
+                    <th>Ca làm việc</th>
+                    <th>Khung giờ</th>
+                    <th>Hiệu lực từ</th>
+                    <th>Hiệu lực đến</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Assignments.Count == 0)
+                {
+                    <tr>
+                        <td colspan="6" class="empty">Chưa có phân ca nào.</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var assignment in Model.Assignments)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@assignment.Employee?.EmployeeCode</strong><br />
+                                <span class="muted">@assignment.Employee?.FullName</span>
+                            </td>
+                            <td>
+                                <span class="badge badge-neutral">@assignment.Shift?.ShiftCode</span><br />
+                                @assignment.Shift?.ShiftName
+                            </td>
+                            <td>
+                                @(assignment.Shift == null
+                                    ? "-"
+                                    : $"{assignment.Shift.StartTime:hh\\\\\\:mm} - {assignment.Shift.EndTime:hh\\\\\\:mm}")
+                            </td>
+                            <td>@assignment.EffectiveFromDate.ToString("dd/MM/yyyy")</td>
+                            <td>@(assignment.EffectiveToDate?.ToString("dd/MM/yyyy") ?? "Không giới hạn")</td>
+                            <td>
+                                <div class="toolbar">
+                                    <a class="btn btn-secondary"
+                                       asp-page="/Admin/Shifts/Assign/Edit"
+                                       asp-route-id="@assignment.Id">Sửa</a>
+                                    <form method="post"
+                                          asp-page-handler="DeleteAssignment"
+                                          asp-route-id="@assignment.Id"
+                                          data-delete-form
+                                          data-delete-message="Bạn có chắc muốn xóa phân ca này không?">
+                                        <button class="btn btn-danger" type="submit">Xóa</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

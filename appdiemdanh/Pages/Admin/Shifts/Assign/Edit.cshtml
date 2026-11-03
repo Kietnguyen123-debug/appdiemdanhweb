@@ -1,0 +1,51 @@
+@page "{id:long}"
+@model AppDiemDanh.Pages.Admin.Shifts.Assign.EditModel
+@{ ViewData["Title"] = "Sửa phân ca"; }
+<div class="section-head">
+    <div>
+        <p class="eyebrow">LỊCH LÀM VIỆC</p>
+        <h1>Sửa phân ca nhân viên</h1>
+        <p class="muted">Cập nhật nhân viên, ca và thời gian hiệu lực.</p>
+    </div>
+    <a class="btn btn-secondary" asp-page="/Admin/Shifts">← Về quản lý ca</a>
+</div>
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+<div class="card">
+    <form method="post" class="grid grid-2">
+        <div>
+            <label>Nhân viên</label>
+            <select class="form-control" asp-for="Input.EmployeeId" required>
+                <option value="0">-- Chọn nhân viên --</option>
+                @foreach (var employee in Model.Employees)
+                {
+                    <option value="@employee.Id">@employee.EmployeeCode - @employee.FullName</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label>Ca làm việc</label>
+            <select class="form-control" asp-for="Input.ShiftId" required>
+                <option value="0">-- Chọn ca --</option>
+                @foreach (var shift in Model.Shifts)
+                {
+                    <option value="@shift.Id">@shift.ShiftCode - @shift.ShiftName</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label>Hiệu lực từ</label>
+            <input class="form-control" type="date" asp-for="Input.EffectiveFromDate" required />
+        </div>
+        <div>
+            <label>Hiệu lực đến</label>
+            <input class="form-control" type="date" asp-for="Input.EffectiveToDate" />
+        </div>
+        <div class="toolbar">
+            <button class="btn btn-primary" type="submit">Lưu thay đổi</button>
+            <a class="btn btn-secondary" asp-page="/Admin/Shifts">Hủy</a>
+        </div>
+    </form>
+</div>
