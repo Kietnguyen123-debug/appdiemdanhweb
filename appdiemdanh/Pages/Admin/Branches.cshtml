@@ -1,84 +1,31 @@
 @page
 @model AppDiemDanh.Pages.Admin.BranchesModel
-@{
-    ViewData["Title"] = "Quản lý chi nhánh";
-}
-<div class="section-head">
-    <div>
-        <p class="eyebrow">QUẢN TRỊ NHÂN SỰ</p>
-        <h1>Chi nhánh</h1>
-        <p class="muted">Quản lý danh sách chi nhánh trong hệ thống</p>
-    </div>
-</div>
-
-@if (!string.IsNullOrEmpty(Model.Message))
-{
-    <div class="alert alert-@(Model.Message.Contains("thành công") ? "success" : "error")">@Model.Message</div>
-}
-
-<div class="card">
-    <div class="section-head">
-        <h3>Thêm chi nhánh mới</h3>
-    </div>
-    <form method="post" asp-page-handler="Create">
-        <div class="form-group">
+@{ ViewData["Title"] = "Chi nhánh"; }
+<div class="section-head"><div><p class="eyebrow">QUẢN TRỊ NHÂN SỰ</p><h1>Quản lý chi nhánh</h1><p class="muted">Tạo và quản lý chi nhánh để gán cho nhân viên.</p></div></div>
+@if (!string.IsNullOrEmpty(Model.Message)){<div class="alert alert-@(Model.Message.Contains("thành công") ? "success" : "error")">@Model.Message</div>}
+<div class="grid grid-2">
+    <div class="card">
+        <h3>Thêm chi nhánh</h3>
+        <form method="post" asp-page-handler="Create">
             <label for="NewBranchName">Tên chi nhánh</label>
-            <input type="text" id="NewBranchName" name="NewBranchName" class="form-control" value="@Model.NewBranchName" required maxlength="200" placeholder="Nhập tên chi nhánh" />
-        </div>
-        <button type="submit" class="btn btn-primary">Thêm chi nhánh</button>
-    </form>
-</div>
-
-<div class="card">
-    <div class="section-head">
-        <h3>Danh sách chi nhánh</h3>
+            <input class="form-control" type="text" id="NewBranchName" name="NewBranchName" value="@Model.NewBranchName" required maxlength="200" placeholder="Ví dụ: Chi nhánh Hà Nội" />
+            <button class="btn btn-primary" type="submit" style="margin-top:14px">Thêm chi nhánh</button>
+        </form>
     </div>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Tên chi nhánh</th>
-                <th>Trạng thái</th>
-                <th>Thao tác</th>
-            </tr>
-        </thead>
-        <tbody>
-            @if (Model.Branches.Any())
+    <div class="card">
+        <h3>Danh sách chi nhánh</h3>
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Tên chi nhánh</th><th>Số nhân viên</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
+        @if (Model.Branches.Any())
+        {
+            @foreach (var item in Model.Branches)
             {
-                @foreach (var branch in Model.Branches)
-                {
-                    <tr>
-                        <td>@branch.Id</td>
-                        <td>@branch.Name</td>
-                        <td>
-                            @if (branch.IsActive)
-                            {
-                                <span class="badge badge-success">Hoạt động</span>
-                            }
-                            else
-                            {
-                                <span class="badge badge-error">Đã khóa</span>
-                            }
-                        </td>
-                        <td>
-                            <form method="post" asp-page-handler="Toggle" asp-route-id="@branch.Id" style="display:inline">
-                                <button type="submit" class="btn btn-sm @(branch.IsActive ? "btn-warning" : "btn-success")">
-                                    @(branch.IsActive ? "Khóa" : "Mở")
-                                </button>
-                            </form>
-                            <form method="post" asp-page-handler="Delete" asp-route-id="@branch.Id" data-delete-form data-delete-message="Bạn có chắc chắn muốn xóa chi nhánh '@branch.Name'?" style="display:inline">
-                                <button type="submit" class="btn btn-sm btn-danger">Xóa</button>
-                            </form>
-                        </td>
-                    </tr>
-                }
+                <tr><td><strong>@item.Name</strong></td><td>@(Model.EmployeeCounts.TryGetValue(item.Id, out var count) ? count : 0)</td><td><span class="badge @(item.IsActive ? "badge-success":"badge-danger")">@(item.IsActive ? "Hoạt động":"Đã khóa")</span></td><td><div class="toolbar"><form method="post" asp-page-handler="Toggle" asp-route-id="@item.Id"><button class="btn btn-secondary" type="submit">@(item.IsActive ? "Khóa":"Mở khóa")</button></form><form method="post" asp-page-handler="Delete" asp-route-id="@item.Id" data-delete-form data-delete-message="Bạn có chắc muốn xóa chi nhánh @item.Name không?"><button class="btn btn-danger" type="submit">Xóa</button></form></div></td></tr>
             }
-            else
-            {
-                <tr>
-                    <td colspan="4" style="text-align:center; padding: 40px;">Chưa có chi nhánh nào</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+        }
+        else
+        {
+            <tr><td colspan="4" style="text-align:center; padding: 40px;">Chưa có chi nhánh nào</td></tr>
+        }
+        </tbody></table></div>
+    </div>
 </div>

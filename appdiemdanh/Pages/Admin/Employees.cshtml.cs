@@ -113,7 +113,45 @@ public class EmployeesModel : AdminPageModel
         if (!await HasPermissionAsync("Employees", "Delete")) return Forbid();
         if (id <= 0) return BadRequest("Mã nhân viên không hợp lệ.");
 
-        Message = "Xóa nhân viên chưa được chuyển sang soft delete vì model hiện tại chưa có cờ xóa.";
+        var employee = await _context.Employees.FindAsync(id);
+        if (employee == null) return NotFound();
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
+        await _context.AttendanceAdjustments
+            .Where(x => x.AdminEmployeeId == id)
+            .ExecuteDeleteAsync();
+        await _context.AdminAuditLogs
+            .Where(x => x.AdminId == id)
+            .ExecuteDeleteAsync();
+        await _context.LeaveRequests
+            .Where(x => x.ApprovedByEmployeeId == id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.ApprovedByEmployeeId, (int?)null));
+        await _context.AttendanceExplanations
+            .Where(x => x.ReviewerId == id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.ReviewerId, (int?)null));
+        await _context.SalaryAdvances
+            .Where(x => x.ApprovedById == id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.ApprovedById, (int?)null));
+        await _context.EmployeeSalaries
+            .Where(x => x.CreatedBy == id || x.ApprovedBy == id)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.CreatedBy, (int?)null)
+                .SetProperty(x => x.ApprovedBy, (int?)null));
+        await _context.GroupSchedules
+            .Where(x => x.CreatedBy == id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.CreatedBy, (int?)null));
+        await _context.EmployeeShiftExceptions
+            .Where(x => x.CreatedBy == id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.CreatedBy, (int?)null));
+        await _context.Attendances
+            .Where(x => x.EmployeeId == id)
+            .ExecuteDeleteAsync();
+
+        _context.Employees.Remove(employee);
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        Message = $"Đã xóa nhân viên {employee.FullName} thành công.";
         await LoadAsync();
         return Page();
     }

@@ -8,6 +8,7 @@ public class BranchesModel : AdminPageModel
 {
     private readonly AppDbContext _context;
     public List<Branch> Branches { get; private set; } = [];
+    public Dictionary<int, int> EmployeeCounts { get; private set; } = [];
     public string? Message { get; set; }
 
     [BindProperty]
@@ -92,5 +93,9 @@ public class BranchesModel : AdminPageModel
     private async Task LoadAsync()
     {
         Branches = await _context.Branches.OrderByDescending(x => x.Id).ToListAsync();
+        EmployeeCounts = await _context.Employees
+            .GroupBy(x => x.BranchId)
+            .Select(x => new { BranchId = x.Key, Count = x.Count() })
+            .ToDictionaryAsync(x => x.BranchId, x => x.Count);
     }
 }

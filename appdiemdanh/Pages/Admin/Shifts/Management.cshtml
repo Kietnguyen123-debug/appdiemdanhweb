@@ -60,7 +60,7 @@
                                 <td class="@(cell == null ? "empty-cell" : "inherited-cell")">
                                     @if (cell != null)
                                     {
-                                        <form method="post" asp-page-handler="RevertGroupSchedule" style="display:inline;" onsubmit="return confirm('Khôi phục lịch nhóm ngày @day.ToString("dd/MM") về mặc định?');">
+                                        <form method="post" asp-page-handler="RevertGroupSchedule" style="display:inline;" data-delete-form data-delete-message="Khôi phục lịch nhóm ngày @day.ToString("dd/MM") về mặc định?">
                                             <input type="hidden" name="workGroupId" value="@group.Id" />
                                             <input type="hidden" name="workDate" value="@day.ToString("yyyy-MM-dd")" />
                                             <input type="hidden" name="year" value="@Model.Month.Year" />
