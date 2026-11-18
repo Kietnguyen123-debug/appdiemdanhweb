@@ -34,6 +34,8 @@ public class SalaryConfigModel : AdminPageModel
     ];
     public LegalDefaultsConfig LegalDefaults { get; } = new();
     public PayrollPolicy? ActivePolicy { get; private set; }
+    public bool HasActivePolicy => ActivePolicy != null;
+    public string PolicyLoadMessage { get; private set; } = "Chưa có policy Thuế/BHXH hiệu lực trong database.";
     public string? Message { get; private set; }
     public bool IsError { get; private set; }
 
@@ -199,17 +201,19 @@ public class SalaryConfigModel : AdminPageModel
             Message = "Đã tạo policy Thuế/BHXH mới. Kỳ lương sau ngày hiệu lực sẽ tự động sử dụng policy này.";
             IsError = false;
         }
-
         catch (ArgumentException exception)
         {
-            return SetError(exception.Message);
+            Message = exception.Message;
+            IsError = true;
         }
         catch (DbException)
         {
-            return SetError("Chưa có bảng PayrollPolicies/PayrollTaxBrackets. Hãy chạy script SQL policy trước.");
+            Message = "Chưa có bảng PayrollPolicies/PayrollTaxBrackets. Hãy chạy docs/payroll-deploy.sql trước.";
+            IsError = true;
         }
 
         await LoadAsync();
+        await LoadSalaryCatalogAsync();
         await LoadPolicyAsync();
         return Page();
     }
@@ -391,6 +395,20 @@ public class SalaryConfigModel : AdminPageModel
         try
         {
             ActivePolicy = await _payrollPolicyService.GetActivePolicy(DateTime.Today);
+            if (ActivePolicy == null)
+            {
+                LegalDefaults.Reset();
+                PolicyLoadMessage = "Chưa tìm thấy policy Thuế/BHXH có hiệu lực hôm nay.";
+                PolicyForm.EffectiveDate = DateTime.Today.AddMonths(1);
+                PolicyForm.TaxBrackets = Enumerable.Range(1, 5)
+                    .Select(sequence => new PayrollTaxBracketDto { Sequence = sequence })
+                    .ToList();
+                Message = "Chưa có policy Thuế/BHXH hiệu lực hôm nay; chưa thể tính hoặc chốt lương cho kỳ hiện tại.";
+                IsError = true;
+                return;
+            }
+
+            PolicyLoadMessage = string.Empty;
             LegalDefaults.Apply(ActivePolicy);
             PolicyForm = new SavePayrollPolicyRequest
             {
@@ -421,6 +439,8 @@ public class SalaryConfigModel : AdminPageModel
         catch (InvalidOperationException)
         {
             ActivePolicy = null;
+            LegalDefaults.Reset();
+            PolicyLoadMessage = "Không thể tải policy Thuế/BHXH hiện tại.";
             PolicyForm.TaxBrackets = Enumerable.Range(1, 5)
                 .Select(sequence => new PayrollTaxBracketDto { Sequence = sequence })
                 .ToList();
@@ -428,6 +448,8 @@ public class SalaryConfigModel : AdminPageModel
         catch (DbException)
         {
             ActivePolicy = null;
+            LegalDefaults.Reset();
+            PolicyLoadMessage = "Chưa có bảng PayrollPolicies/PayrollTaxBrackets trong database.";
             PolicyForm.TaxBrackets = Enumerable.Range(1, 5)
                 .Select(sequence => new PayrollTaxBracketDto { Sequence = sequence })
                 .ToList();
@@ -520,6 +542,18 @@ public class SalaryConfigModel : AdminPageModel
         public IReadOnlyList<string> InsuranceRates { get; private set; } = Array.Empty<string>();
         public IReadOnlyList<string> TaxBrackets { get; private set; } = Array.Empty<string>();
 
+        public void Reset()
+        {
+            EffectiveDate = default;
+            ReferenceInsuranceSalary = 0;
+            InsuranceCeiling = 0;
+            PersonalDeduction = 0;
+            DependentDeduction = 0;
+            MealTaxExemptLimit = 0;
+            InsuranceRates = Array.Empty<string>();
+            TaxBrackets = Array.Empty<string>();
+        }
+
         public void Apply(PayrollPolicy policy)
         {
             EffectiveDate = policy.EffectiveDate;
@@ -529,7 +563,8 @@ public class SalaryConfigModel : AdminPageModel
             DependentDeduction = policy.DependentDeduction;
             MealTaxExemptLimit = policy.MealTaxExemptLimit;
             InsuranceRates = [$"NLĐ {(policy.EmployeeSocialInsuranceRate + policy.EmployeeHealthInsuranceRate + policy.EmployeeUnemploymentInsuranceRate):P1}", $"NSDLĐ {(policy.EmployerSocialInsuranceRate + policy.EmployerHealthInsuranceRate + policy.EmployerUnemploymentInsuranceRate):P1}", "BHTN tối đa 20 lần lương tối thiểu vùng"];
-            TaxBrackets = policy.TaxBrackets.OrderBy(x => x.Sequence).Select(x => $"{(x.UpperLimit.HasValue ? $"Đến {x.UpperLimit:N0}" : "Trên mức cuối")}: {x.Rate:P0}").ToList();
+            TaxBrackets = policy.TaxBrackets.OrderBy(x => x.Sequence).Select(x =>
+                $"Thu nhập tính thuế {(x.UpperLimit.HasValue ? $"đến {x.UpperLimit:N0} ₫/tháng" : "trên 100,000,000 ₫/tháng")}: {x.Rate:P0}").ToList();
         }
     }
 }

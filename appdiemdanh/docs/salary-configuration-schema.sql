@@ -16,49 +16,6 @@ CREATE TABLE dbo.SalaryComponents (
 	UpdatedAt DATETIME2(3) NULL
 );
 
-/* Demo data for SalaryConfig. Safe to run repeatedly: existing codes are preserved. */
-INSERT INTO dbo.SalaryComponents
-	(Code, Name, Category, CalculationType, Formula, TaxTreatment, TaxExemptLimit, InsuranceTreatment)
-SELECT v.Code, v.Name, v.Category, v.CalculationType, v.Formula, v.TaxTreatment, v.TaxExemptLimit, v.InsuranceTreatment
-FROM (VALUES
-	(N'SALARY_BASE', N'Lương cơ bản', N'Earning', N'Manual', NULL, N'Taxable', NULL, N'Included'),
-	(N'ALLOW_MEAL', N'Phụ cấp ăn trưa', N'Earning', N'Fixed', NULL, N'CappedExempt', CONVERT(decimal(19,2), 730000), N'Excluded'),
-	(N'ALLOW_RESP', N'Phụ cấp trách nhiệm', N'Earning', N'Fixed', NULL, N'Taxable', NULL, N'Included'),
-	(N'BONUS_KPI', N'Thưởng KPI', N'Earning', N'Formula', N'KPI_RATE * SALARY_BASE', N'Taxable', NULL, N'Excluded'),
-	(N'INSURANCE_EMP', N'BHXH NLĐ', N'Deduction', N'Formula', N'INSURANCE_BASE * EMP_INSURANCE_RATE', N'Exempt', NULL, N'Excluded'),
-	(N'PERSONAL_TAX', N'Thuế TNCN', N'Deduction', N'Formula', N'TAXABLE_INCOME * TAX_RATE', N'Exempt', NULL, N'Excluded')
-) AS v(Code, Name, Category, CalculationType, Formula, TaxTreatment, TaxExemptLimit, InsuranceTreatment)
-WHERE NOT EXISTS (SELECT 1 FROM dbo.SalaryComponents c WHERE c.Code = v.Code);
-
-INSERT INTO dbo.SalaryTemplates (Code, Name, PositionGroup)
-SELECT v.Code, v.Name, v.PositionGroup
-FROM (VALUES
-	(N'TPL_TECH_SENIOR', N'Tech Senior', N'Kỹ thuật'),
-	(N'TPL_SALES_SPECIALIST', N'Sales Specialist', N'Kinh doanh'),
-	(N'TPL_OFFICE', N'Khối văn phòng', N'Vận hành')
-) AS v(Code, Name, PositionGroup)
-WHERE NOT EXISTS (SELECT 1 FROM dbo.SalaryTemplates t WHERE t.Code = v.Code);
-
-INSERT INTO dbo.SalaryTemplateDetails (SalaryTemplateId, SalaryComponentId, DefaultValue, Formula)
-SELECT t.Id, c.Id, d.DefaultValue, d.Formula
-FROM (VALUES
-	(N'TPL_TECH_SENIOR', N'SALARY_BASE', CONVERT(decimal(19,2), NULL), NULL),
-	(N'TPL_TECH_SENIOR', N'ALLOW_RESP', CONVERT(decimal(19,2), 2000000), NULL),
-	(N'TPL_TECH_SENIOR', N'BONUS_KPI', CONVERT(decimal(19,2), NULL), N'KPI_RATE * SALARY_BASE'),
-	(N'TPL_SALES_SPECIALIST', N'SALARY_BASE', CONVERT(decimal(19,2), NULL), NULL),
-	(N'TPL_SALES_SPECIALIST', N'BONUS_KPI', CONVERT(decimal(19,2), NULL), N'SALES_RATE * REVENUE'),
-	(N'TPL_OFFICE', N'SALARY_BASE', CONVERT(decimal(19,2), NULL), NULL),
-	(N'TPL_OFFICE', N'ALLOW_MEAL', CONVERT(decimal(19,2), 730000), NULL),
-	(N'TPL_OFFICE', N'ALLOW_RESP', CONVERT(decimal(19,2), 1000000), NULL)
-) AS d(TemplateCode, ComponentCode, DefaultValue, Formula)
-INNER JOIN dbo.SalaryTemplates t ON t.Code = d.TemplateCode
-INNER JOIN dbo.SalaryComponents c ON c.Code = d.ComponentCode
-WHERE NOT EXISTS (
-	SELECT 1
-	FROM dbo.SalaryTemplateDetails x
-	WHERE x.SalaryTemplateId = t.Id AND x.SalaryComponentId = c.Id
-);
-
 CREATE TABLE dbo.SalaryTemplates (
 	Id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_SalaryTemplates PRIMARY KEY,
 	Code NVARCHAR(80) NOT NULL CONSTRAINT UQ_SalaryTemplates_Code UNIQUE,
@@ -79,6 +36,55 @@ CREATE TABLE dbo.SalaryTemplateDetails (
 	CONSTRAINT UQ_SalaryTemplateDetails UNIQUE (SalaryTemplateId, SalaryComponentId)
 );
 
+/* Demo data for SalaryConfig. Safe to run repeatedly: existing codes are preserved. */
+INSERT INTO dbo.SalaryComponents
+	(Code, Name, Category, CalculationType, Formula, TaxTreatment, TaxExemptLimit, InsuranceTreatment)
+SELECT v.Code, v.Name, v.Category, v.CalculationType, v.Formula, v.TaxTreatment, v.TaxExemptLimit, v.InsuranceTreatment
+FROM (VALUES
+	(N'SALARY_BASE', N'Lương cơ bản', N'Earning', N'Manual', NULL, N'Taxable', NULL, N'Included'),
+	(N'ALLOW_MEAL', N'Phụ cấp ăn trưa', N'Earning', N'Fixed', NULL, N'CappedExempt', CONVERT(decimal(19,2), 730000), N'Excluded'),
+	(N'ALLOW_RESP', N'Phụ cấp trách nhiệm', N'Earning', N'Fixed', NULL, N'Taxable', NULL, N'Included'),
+	(N'BONUS_KPI', N'Thưởng KPI', N'Earning', N'Formula', N'KPI_RATE * SALARY_BASE', N'Taxable', NULL, N'Excluded'),
+	(N'KPI_RATE', N'Tỷ lệ KPI', N'CalculationBase', N'Manual', NULL, N'Exempt', NULL, N'Excluded'),
+	(N'SALES_RATE', N'Tỷ lệ doanh số', N'CalculationBase', N'Manual', NULL, N'Exempt', NULL, N'Excluded'),
+	(N'REVENUE', N'Doanh thu', N'CalculationBase', N'Manual', NULL, N'Exempt', NULL, N'Excluded'),
+	(N'INSURANCE_EMP', N'BHXH NLĐ', N'Deduction', N'Formula', N'INSURANCE_BASE * EMP_INSURANCE_RATE', N'Exempt', NULL, N'Excluded'),
+	(N'PERSONAL_TAX', N'Thuế TNCN', N'Deduction', N'Formula', N'TAXABLE_INCOME * TAX_RATE', N'Exempt', NULL, N'Excluded')
+) AS v(Code, Name, Category, CalculationType, Formula, TaxTreatment, TaxExemptLimit, InsuranceTreatment)
+WHERE NOT EXISTS (SELECT 1 FROM dbo.SalaryComponents c WHERE c.Code = v.Code);
+
+INSERT INTO dbo.SalaryTemplates (Code, Name, PositionGroup)
+SELECT v.Code, v.Name, v.PositionGroup
+FROM (VALUES
+	(N'TPL_TECH_SENIOR', N'Tech Senior', N'Kỹ thuật'),
+	(N'TPL_SALES_SPECIALIST', N'Sales Specialist', N'Kinh doanh'),
+	(N'TPL_OFFICE', N'Khối văn phòng', N'Vận hành')
+) AS v(Code, Name, PositionGroup)
+WHERE NOT EXISTS (SELECT 1 FROM dbo.SalaryTemplates t WHERE t.Code = v.Code);
+
+INSERT INTO dbo.SalaryTemplateDetails (SalaryTemplateId, SalaryComponentId, DefaultValue, Formula)
+SELECT t.Id, c.Id, d.DefaultValue, d.Formula
+FROM (VALUES
+	(N'TPL_TECH_SENIOR', N'SALARY_BASE', CONVERT(decimal(19,2), NULL), NULL),
+	(N'TPL_TECH_SENIOR', N'ALLOW_RESP', CONVERT(decimal(19,2), 2000000), NULL),
+	(N'TPL_TECH_SENIOR', N'KPI_RATE', CONVERT(decimal(19,2), 0), NULL),
+	(N'TPL_TECH_SENIOR', N'BONUS_KPI', CONVERT(decimal(19,2), NULL), N'KPI_RATE * SALARY_BASE'),
+	(N'TPL_SALES_SPECIALIST', N'SALARY_BASE', CONVERT(decimal(19,2), NULL), NULL),
+	(N'TPL_SALES_SPECIALIST', N'SALES_RATE', CONVERT(decimal(19,2), 0), NULL),
+	(N'TPL_SALES_SPECIALIST', N'REVENUE', CONVERT(decimal(19,2), 0), NULL),
+	(N'TPL_SALES_SPECIALIST', N'BONUS_KPI', CONVERT(decimal(19,2), NULL), N'SALES_RATE * REVENUE'),
+	(N'TPL_OFFICE', N'SALARY_BASE', CONVERT(decimal(19,2), NULL), NULL),
+	(N'TPL_OFFICE', N'ALLOW_MEAL', CONVERT(decimal(19,2), 730000), NULL),
+	(N'TPL_OFFICE', N'ALLOW_RESP', CONVERT(decimal(19,2), 1000000), NULL)
+) AS d(TemplateCode, ComponentCode, DefaultValue, Formula)
+INNER JOIN dbo.SalaryTemplates t ON t.Code = d.TemplateCode
+INNER JOIN dbo.SalaryComponents c ON c.Code = d.ComponentCode
+WHERE NOT EXISTS (
+	SELECT 1
+	FROM dbo.SalaryTemplateDetails x
+	WHERE x.SalaryTemplateId = t.Id AND x.SalaryComponentId = c.Id
+);
+
 CREATE TABLE dbo.EmployeeSalaries (
 	Id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_EmployeeSalaries PRIMARY KEY,
 	EmployeeId INT NOT NULL,
@@ -86,6 +92,7 @@ CREATE TABLE dbo.EmployeeSalaries (
 	EffectiveDate DATE NOT NULL,
 	EndDate DATE NULL,
 	Status NVARCHAR(30) NOT NULL, -- Draft, PendingApproval, Active, Inactive
+	IsCasualIncome BIT NOT NULL CONSTRAINT DF_EmployeeSalaries_IsCasualIncome DEFAULT 0,
 	Reason NVARCHAR(1000) NULL,
 	DecisionNo NVARCHAR(100) NULL,
 	CreatedBy INT NOT NULL,
@@ -190,8 +197,9 @@ CREATE INDEX IX_GroupMembers_Group_Effective ON dbo.GroupMembers(WorkGroupId, Ef
 CREATE INDEX IX_GroupSchedules_Date_Group ON dbo.GroupSchedules(WorkDate, WorkGroupId);
 CREATE INDEX IX_EmployeeShiftExceptions_Date_Employee ON dbo.EmployeeShiftExceptions(WorkDate, EmployeeId);
 
-/* Waterfall: exception -> active group schedule -> legacy default EmployeeShift. */
--- @DepartmentId, @PeriodStart and @PeriodEnd are parameters.
+/* Example query: exception -> active group schedule -> legacy default EmployeeShift.
+   Uncomment and declare @DepartmentId, @PeriodStart and @PeriodEnd before running. */
+/*
 WITH Calendar AS (
 	SELECT @PeriodStart AS WorkDate
 	UNION ALL SELECT DATEADD(DAY, 1, WorkDate) FROM Calendar WHERE WorkDate < @PeriodEnd
@@ -213,3 +221,4 @@ WITH Calendar AS (
 SELECT r.*, s.ShiftCode, s.ShiftName, s.StartTime, s.EndTime
 FROM Resolved r LEFT JOIN dbo.Shifts s ON s.Id=r.ShiftId
 ORDER BY r.EmployeeCode, r.WorkDate OPTION (MAXRECURSION 366);
+*/

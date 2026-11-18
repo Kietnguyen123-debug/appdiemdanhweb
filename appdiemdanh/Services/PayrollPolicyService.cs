@@ -6,7 +6,7 @@ namespace AppDiemDanh.Services;
 
 public interface IPayrollPolicyService
 {
-    Task<PayrollPolicy> GetActivePolicy(DateTime payPeriodDate, CancellationToken cancellationToken = default);
+    Task<PayrollPolicy?> GetActivePolicy(DateTime payPeriodDate, CancellationToken cancellationToken = default);
     Task<PayrollPolicy> CreatePolicyAsync(SavePayrollPolicyRequest request, int createdBy, CancellationToken cancellationToken = default);
 }
 
@@ -19,7 +19,7 @@ public sealed class PayrollPolicyService : IPayrollPolicyService
         _context = context;
     }
 
-    public async Task<PayrollPolicy> GetActivePolicy(DateTime payPeriodDate, CancellationToken cancellationToken = default)
+    public async Task<PayrollPolicy?> GetActivePolicy(DateTime payPeriodDate, CancellationToken cancellationToken = default)
     {
         var policy = await _context.PayrollPolicies
             .AsNoTracking()
@@ -29,8 +29,7 @@ public sealed class PayrollPolicyService : IPayrollPolicyService
             .ThenByDescending(x => x.Id)
             .FirstOrDefaultAsync(cancellationToken);
 
-        return policy ?? throw new InvalidOperationException(
-            $"Chưa có cấu hình Thuế/BHXH có hiệu lực trước hoặc tại {payPeriodDate:yyyy-MM-dd}. Hãy chạy script seed policy.");
+        return policy;
     }
 
     public async Task<PayrollPolicy> CreatePolicyAsync(

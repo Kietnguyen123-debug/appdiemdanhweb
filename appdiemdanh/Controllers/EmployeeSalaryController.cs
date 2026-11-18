@@ -125,6 +125,7 @@ public sealed class EmployeeSalaryController : Controller
             FullName = employee.FullName,
             SalaryId = current?.Id,
             SalaryTemplateId = selectedTemplateId,
+            IsCasualIncome = current?.IsCasualIncome ?? false,
             Templates = templates,
             Components = components
         });
@@ -157,6 +158,7 @@ public sealed class EmployeeSalaryController : Controller
                 EmployeeId = request.EmployeeId,
                 SalaryTemplateId = template.Id,
                 EffectiveDate = effectiveDate,
+                IsCasualIncome = request.IsCasualIncome,
                 Status = "Active",
                 CreatedBy = CurrentAdminId()
             };
@@ -178,7 +180,8 @@ public sealed class EmployeeSalaryController : Controller
                 message = "Đã lưu cấu hình lương cá nhân.",
                 employeeId = request.EmployeeId,
                 templateId = template.Id,
-                templateName = template.Name
+                templateName = template.Name,
+                isCasualIncome = request.IsCasualIncome
             });
         }
         catch (DbUpdateException)

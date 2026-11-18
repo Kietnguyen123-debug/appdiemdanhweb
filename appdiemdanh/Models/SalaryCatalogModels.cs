@@ -50,6 +50,7 @@ public sealed class EmployeeSalary
     public DateTime EffectiveDate { get; set; }
     public DateTime? EndDate { get; set; }
     public string Status { get; set; } = "Active";
+    public bool IsCasualIncome { get; set; }
     public string? Reason { get; set; }
     public int CreatedBy { get; set; }
     public int? ApprovedBy { get; set; }

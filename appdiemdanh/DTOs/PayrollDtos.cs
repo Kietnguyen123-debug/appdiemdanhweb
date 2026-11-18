@@ -27,10 +27,12 @@ namespace AppDiemDanh.DTOs
         public decimal TotalInsuranceDays { get; set; }
         public bool SubjectToInsurance { get; set; }
         public decimal TaxableIncome { get; set; }
+        public bool IsCasualIncome { get; set; }
         public decimal PersonalDeduction { get; set; }
         public decimal DependentDeduction { get; set; }
         public int DependentCount { get; set; }
         public decimal Pit { get; set; }
+        public decimal ComponentDeductions { get; set; }
         public decimal SalaryAdvanceDeduction { get; set; }
         public IReadOnlyList<ProgressiveTaxBracketDto> TaxBrackets { get; set; } = Array.Empty<ProgressiveTaxBracketDto>();
         public DateTime PolicyEffectiveDate { get; set; }

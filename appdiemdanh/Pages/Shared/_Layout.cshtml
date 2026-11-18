@@ -1,9 +1,20 @@
 @using AppDiemDanh.Services
+@using Microsoft.EntityFrameworkCore
 @inject IPermissionService PermissionService
+@inject AppDbContext DbContext
 @{
     var adminEmployeeId = Context.Session.GetInt32("AdminEmployeeId");
+    var currentAccount = adminEmployeeId.HasValue
+        ? await DbContext.Employees
+            .AsNoTracking()
+            .Where(x => x.Id == adminEmployeeId.Value && x.IsActive)
+            .Select(x => new { x.FullName, x.Role })
+            .SingleOrDefaultAsync()
+        : null;
+    var accountName = currentAccount?.FullName ?? "Tài khoản";
+    var accountRole = currentAccount?.Role ?? string.Empty;
     var canUseAdminChatbot = adminEmployeeId.HasValue && await PermissionService.HasPermissionAsync(adminEmployeeId.Value, "AdminChatbot", "Use");
-    var isAdmin = string.Equals(Context.Session.GetString("AdminRole"), "Admin", StringComparison.OrdinalIgnoreCase);
+    var isAdmin = string.Equals(accountRole, "Admin", StringComparison.OrdinalIgnoreCase);
 
     var canViewDashboard = adminEmployeeId.HasValue && await PermissionService.HasPermissionAsync(adminEmployeeId.Value, "Dashboard", "View");
     var canViewEmployees = adminEmployeeId.HasValue && await PermissionService.HasPermissionAsync(adminEmployeeId.Value, "Employees", "View");
@@ -136,7 +147,7 @@
         <div class="sidebar-bottom"><a class="nav-link" href="/swagger">⚙ <span>API Swagger</span></a><a class="nav-link" asp-page="/Admin/Logout">↪ <span>Đăng xuất</span></a></div>
     </aside>
     <main class="main-content">
-        <header class="topbar"><button class="mobile-menu" onclick="document.body.classList.toggle('sidebar-open')">☰</button><div><span class="topbar-kicker">HRM • ADMIN PORTAL</span><h2>@ViewData["Title"]</h2></div><div class="user-chip"><span class="avatar">@(Context.Session.GetString("AdminEmployeeName")?.FirstOrDefault() ?? 'A')</span><span>@Context.Session.GetString("AdminEmployeeName")</span><small>@Context.Session.GetString("AdminRole")</small></div></header>
+        <header class="topbar"><button class="mobile-menu" onclick="document.body.classList.toggle('sidebar-open')">☰</button><div><span class="topbar-kicker">HRM • ADMIN PORTAL</span><h2>@ViewData["Title"]</h2></div><a class="user-chip" asp-page="/Admin/Account" title="Xem thông tin tài khoản"><span class="avatar">@(accountName.FirstOrDefault())</span><span>@accountName</span><small>@accountRole</small></a></header>
         <section class="page-content" id="admin-content">@RenderBody()</section>
     </main>
 </div>

@@ -17,6 +17,7 @@
                 <label>Mẫu lương khung<select class="form-control" name="SalaryTemplateId" data-individual-template required><option value="">Chọn mẫu lương</option>@foreach (var template in Model.Templates) { <option value="@template.Id" selected="@(Model.SalaryTemplateId == template.Id)">@template.Name</option> }</select></label>
                 <label>Ngày áp dụng<input class="form-control" type="date" name="EffectiveDate" value="@DateTime.Today.ToString("yyyy-MM-dd")" required /></label>
             </div>
+            <label><input type="checkbox" name="IsCasualIncome" checked="@(Model.IsCasualIncome ? "checked" : null)" /> Khấu trừ PIT theo diện thu nhập vãng lai</label>
             <div class="table-wrap" data-individual-components>
                 @if (Model.Components.Count == 0)
                 {
@@ -27,7 +28,7 @@
                     <table class="data-table"><thead><tr><th>Mã</th><th>Thành phần</th><th>Số tiền thực tế</th><th>Công thức đè</th></tr></thead><tbody>
                     @foreach (var component in Model.Components)
                     {
-                        <tr data-component-id="@component.ComponentId"><td>@component.Code</td><td><strong>@component.Name</strong></td><td><input class="form-control" type="number" min="0" step="0.01" data-component-amount value="@(component.Amount?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty)" /></td><td><input class="form-control" type="text" maxlength="2000" data-component-formula value="@component.Formula" /></td></tr>
+                        <tr data-component-id="@component.ComponentId"><td>@component.Code</td><td><strong>@component.Name</strong></td><td><input class="form-control" type="text" inputmode="decimal" data-decimal-input data-component-amount value="@(component.Amount?.ToString("0.################", System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty)" /></td><td><input class="form-control" type="text" maxlength="2000" data-component-formula value="@component.Formula" /></td></tr>
                     }
                     </tbody></table>
                 }

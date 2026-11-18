@@ -67,6 +67,9 @@ builder.Services.AddScoped<IAttendanceExplanationService, AttendanceExplanationS
 builder.Services.AddScoped<IFcmService, FcmService>();
 builder.Services.AddScoped<IPayrollService, PayrollService>();
 builder.Services.AddScoped<IPayrollPolicyService, PayrollPolicyService>();
+builder.Services.AddSingleton<PayrollFormulaEvaluator>();
+builder.Services.AddSingleton<PayrollCalculationEngine>();
+builder.Services.AddSingleton<PayrollWorkdayCalculator>();
 builder.Services.AddScoped<ILatePenaltyService, LatePenaltyService>();
 builder.Services.AddScoped<ISalaryAdvanceService, SalaryAdvanceService>();
 builder.Services.AddScoped<IOvertimeService, OvertimeService>();

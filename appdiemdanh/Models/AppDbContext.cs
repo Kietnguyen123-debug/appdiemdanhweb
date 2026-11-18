@@ -457,6 +457,7 @@ namespace AppDiemDanh.Models
         public DbSet<AdminAuditLog> AdminAuditLogs { get; set; }
         public DbSet<PayrollPolicy> PayrollPolicies { get; set; }
         public DbSet<PayrollTaxBracket> PayrollTaxBrackets { get; set; }
+        public DbSet<PayrollHoliday> PayrollHolidays { get; set; }
         public DbSet<WorkGroup> WorkGroups { get; set; }
         public DbSet<GroupMember> GroupMembers { get; set; }
         public DbSet<GroupSchedule> GroupSchedules { get; set; }
@@ -516,6 +517,7 @@ namespace AppDiemDanh.Models
             modelBuilder.Entity<EmployeeSalary>(entity =>
             {
                 entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
+                entity.Property(x => x.IsCasualIncome).HasDefaultValue(false);
                 entity.Property(x => x.Reason).HasMaxLength(1000);
                 entity.HasIndex(x => new { x.EmployeeId, x.EffectiveDate });
                 entity.HasOne(x => x.Employee).WithMany().HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Cascade);
@@ -616,6 +618,12 @@ namespace AppDiemDanh.Models
                     .WithMany(x => x.TaxBrackets)
                     .HasForeignKey(x => x.PayrollPolicyId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<PayrollHoliday>(entity =>
+            {
+                entity.Property(x => x.Name).HasMaxLength(200).IsRequired();
+                entity.HasIndex(x => x.HolidayDate).IsUnique();
             });
 
             modelBuilder.Entity<AdminAuditLog>(entity =>

@@ -58,37 +58,44 @@
         </div>
 
         <div class="salary-subpanel @(Model.ActiveSubtab == "legal" ? "is-active" : "")" data-subpanel="legal">
-            <div class="section-head salary-section-head"><div><h2>Thông số pháp lý mặc định</h2><p class="muted">Phiên bản cấu hình có hiệu lực từ @Model.LegalDefaults.EffectiveDate.ToString("dd/MM/yyyy"). Có thể cập nhật theo văn bản pháp luật mới.</p></div><span class="badge badge-warning">Cần phê duyệt khi thay đổi</span></div>
-            <div class="grid grid-3">
-                <div class="card"><span class="stat-label">Mức tham chiếu BHXH</span><strong class="salary-stat">@Model.LegalDefaults.ReferenceInsuranceSalary.ToString("N0") ₫</strong><small class="muted">Trần BHXH/BHYT: @Model.LegalDefaults.InsuranceCeiling.ToString("N0") ₫</small></div>
-                <div class="card"><span class="stat-label">Giảm trừ gia cảnh</span><strong class="salary-stat">@Model.LegalDefaults.PersonalDeduction.ToString("N0") ₫</strong><small class="muted">Người phụ thuộc: @Model.LegalDefaults.DependentDeduction.ToString("N0") ₫/tháng</small></div>
-                <div class="card"><span class="stat-label">Ăn giữa ca miễn thuế</span><strong class="salary-stat">@Model.LegalDefaults.MealTaxExemptLimit.ToString("N0") ₫</strong><small class="muted">Áp dụng theo định mức cấu hình</small></div>
-            </div>
-            <div class="card salary-legal-card"><div><strong>Tỷ lệ bảo hiểm</strong><ul>@foreach (var rate in Model.LegalDefaults.InsuranceRates) { <li>@rate</li> }</ul></div><div><strong>Biểu thuế lũy tiến 5 bậc</strong><ul>@foreach (var bracket in Model.LegalDefaults.TaxBrackets) { <li>@bracket</li> }</ul></div></div>
+            @if (Model.HasActivePolicy)
+            {
+                <div class="section-head salary-section-head"><div><h2>Thông số pháp lý mặc định</h2><p class="muted">Phiên bản cấu hình có hiệu lực từ @Model.LegalDefaults.EffectiveDate.ToString("dd/MM/yyyy"). Có thể cập nhật theo văn bản pháp luật mới.</p></div><span class="badge badge-warning">Cần phê duyệt khi thay đổi</span></div>
+                <div class="grid grid-3">
+                    <div class="card"><span class="stat-label">Mức tham chiếu BHXH</span><strong class="salary-stat">@Model.LegalDefaults.ReferenceInsuranceSalary.ToString("N0") ₫</strong><small class="muted">Trần BHXH/BHYT: @Model.LegalDefaults.InsuranceCeiling.ToString("N0") ₫</small></div>
+                    <div class="card"><span class="stat-label">Giảm trừ gia cảnh</span><strong class="salary-stat">@Model.LegalDefaults.PersonalDeduction.ToString("N0") ₫</strong><small class="muted">Người phụ thuộc: @Model.LegalDefaults.DependentDeduction.ToString("N0") ₫/tháng</small></div>
+                    <div class="card"><span class="stat-label">Ăn giữa ca miễn thuế</span><strong class="salary-stat">@Model.LegalDefaults.MealTaxExemptLimit.ToString("N0") ₫</strong><small class="muted">Áp dụng theo định mức cấu hình</small></div>
+                </div>
+                <div class="card salary-legal-card"><div><strong>Tỷ lệ bảo hiểm</strong><ul>@foreach (var rate in Model.LegalDefaults.InsuranceRates) { <li>@rate</li> }</ul></div><div><strong>Biểu thuế lũy tiến 5 bậc</strong><ul>@foreach (var bracket in Model.LegalDefaults.TaxBrackets) { <li>@bracket</li> }</ul></div></div>
+            }
+            else
+            {
+                <div class="alert alert-danger">@Model.PolicyLoadMessage Không hiển thị thông số 0 giả. Hãy áp dụng cấu hình policy SQL hoặc tạo policy có hiệu lực trước kỳ lương.</div>
+            }
             <form method="post" asp-page-handler="SavePolicy" class="card salary-policy-form">
                 <h3>Tạo phiên bản tham số mới</h3>
                 <p class="muted">Thay đổi được lưu thành phiên bản mới, không ghi đè policy cũ và không cần restart ứng dụng.</p>
                 <div class="grid grid-3">
                     <label>Ngày hiệu lực<input class="form-control" type="date" asp-for="PolicyForm.EffectiveDate" required /></label>
-                    <label>Mức tham chiếu BHXH<input class="form-control" type="number" step="0.01" min="0" asp-for="PolicyForm.ReferenceInsuranceSalary" required /></label>
-                    <label>Trần BHXH/BHYT<input class="form-control" type="number" step="0.01" min="0" asp-for="PolicyForm.InsuranceCeiling" required /></label>
-                    <label>GDTGC bản thân<input class="form-control" type="number" step="0.01" min="0" asp-for="PolicyForm.PersonalDeduction" required /></label>
-                    <label>GDTGC người phụ thuộc<input class="form-control" type="number" step="0.01" min="0" asp-for="PolicyForm.DependentDeduction" required /></label>
-                    <label>Trần miễn thuế ăn trưa<input class="form-control" type="number" step="0.01" min="0" asp-for="PolicyForm.MealTaxExemptLimit" required /></label>
-                    <label>Ngưỡng khấu trừ vãng lai<input class="form-control" type="number" step="0.01" min="0" asp-for="PolicyForm.CasualIncomeWithholdingThreshold" required /></label>
-                    <label>Tỷ lệ khấu trừ vãng lai<input class="form-control" type="number" step="0.001" min="0" max="1" asp-for="PolicyForm.CasualIncomeWithholdingRate" required /></label>
+                    <label>Mức tham chiếu BHXH<input class="form-control" type="text" inputmode="decimal" data-decimal-input name="PolicyForm.ReferenceInsuranceSalary" id="PolicyForm_ReferenceInsuranceSalary" value="@Model.PolicyForm.ReferenceInsuranceSalary.ToString("0.################", System.Globalization.CultureInfo.InvariantCulture)" required /></label>
+                    <label>Trần BHXH/BHYT<input class="form-control" type="text" inputmode="decimal" data-decimal-input name="PolicyForm.InsuranceCeiling" id="PolicyForm_InsuranceCeiling" value="@Model.PolicyForm.InsuranceCeiling.ToString("0.################", System.Globalization.CultureInfo.InvariantCulture)" required /></label>
+                    <label>GDTGC bản thân<input class="form-control" type="text" inputmode="decimal" data-decimal-input name="PolicyForm.PersonalDeduction" id="PolicyForm_PersonalDeduction" value="@Model.PolicyForm.PersonalDeduction.ToString("0.################", System.Globalization.CultureInfo.InvariantCulture)" required /></label>
+                    <label>GDTGC người phụ thuộc<input class="form-control" type="text" inputmode="decimal" data-decimal-input name="PolicyForm.DependentDeduction" id="PolicyForm_DependentDeduction" value="@Model.PolicyForm.DependentDeduction.ToString("0.################", System.Globalization.CultureInfo.InvariantCulture)" required /></label>
+                    <label>Trần miễn thuế ăn trưa<input class="form-control" type="text" inputmode="decimal" data-decimal-input name="PolicyForm.MealTaxExemptLimit" id="PolicyForm_MealTaxExemptLimit" value="@Model.PolicyForm.MealTaxExemptLimit.ToString("0.################", System.Globalization.CultureInfo.InvariantCulture)" required /></label>
+                    <label>Ngưỡng khấu trừ vãng lai<input class="form-control" type="text" inputmode="decimal" data-decimal-input name="PolicyForm.CasualIncomeWithholdingThreshold" id="PolicyForm_CasualIncomeWithholdingThreshold" value="@Model.PolicyForm.CasualIncomeWithholdingThreshold.ToString("0.################", System.Globalization.CultureInfo.InvariantCulture)" required /></label>
+                    <label>Tỷ lệ khấu trừ vãng lai<input class="form-control" type="text" inputmode="decimal" data-decimal-input name="PolicyForm.CasualIncomeWithholdingRate" id="PolicyForm_CasualIncomeWithholdingRate" value="@Model.PolicyForm.CasualIncomeWithholdingRate.ToString("0.################", System.Globalization.CultureInfo.InvariantCulture)" required /><small class="muted">Ví dụ 0.1 = 10%</small></label>
                     <label>Văn bản nguồn<input class="form-control" asp-for="PolicyForm.SourceReference" required /></label>
                 </div>
                 <h4 class="salary-policy-heading">Tỷ lệ bảo hiểm và biểu thuế</h4>
                 <div class="grid grid-3">
-                    <label>NLĐ - BHXH<input class="form-control" type="number" step="0.001" min="0" max="1" asp-for="PolicyForm.EmployeeSocialInsuranceRate" required /></label>
-                    <label>NLĐ - BHYT<input class="form-control" type="number" step="0.001" min="0" max="1" asp-for="PolicyForm.EmployeeHealthInsuranceRate" required /></label>
-                    <label>NLĐ - BHTN<input class="form-control" type="number" step="0.001" min="0" max="1" asp-for="PolicyForm.EmployeeUnemploymentInsuranceRate" required /></label>
-                    <label>NSDLĐ - BHXH/BHTNLĐ-BNN<input class="form-control" type="number" step="0.001" min="0" max="1" asp-for="PolicyForm.EmployerSocialInsuranceRate" required /></label>
-                    <label>NSDLĐ - BHYT<input class="form-control" type="number" step="0.001" min="0" max="1" asp-for="PolicyForm.EmployerHealthInsuranceRate" required /></label>
-                    <label>NSDLĐ - BHTN<input class="form-control" type="number" step="0.001" min="0" max="1" asp-for="PolicyForm.EmployerUnemploymentInsuranceRate" required /></label>
+                    <label>NLĐ - BHXH<input class="form-control" type="text" inputmode="decimal" data-decimal-input name="PolicyForm.EmployeeSocialInsuranceRate" id="PolicyForm_EmployeeSocialInsuranceRate" value="@Model.PolicyForm.EmployeeSocialInsuranceRate.ToString("0.################", System.Globalization.CultureInfo.InvariantCulture)" required /></label>
+                    <label>NLĐ - BHYT<input class="form-control" type="text" inputmode="decimal" data-decimal-input name="PolicyForm.EmployeeHealthInsuranceRate" id="PolicyForm_EmployeeHealthInsuranceRate" value="@Model.PolicyForm.EmployeeHealthInsuranceRate.ToString("0.################", System.Globalization.CultureInfo.InvariantCulture)" required /></label>
+                    <label>NLĐ - BHTN<input class="form-control" type="text" inputmode="decimal" data-decimal-input name="PolicyForm.EmployeeUnemploymentInsuranceRate" id="PolicyForm_EmployeeUnemploymentInsuranceRate" value="@Model.PolicyForm.EmployeeUnemploymentInsuranceRate.ToString("0.################", System.Globalization.CultureInfo.InvariantCulture)" required /></label>
+                    <label>NSDLĐ - BHXH/BHTNLĐ-BNN<input class="form-control" type="text" inputmode="decimal" data-decimal-input name="PolicyForm.EmployerSocialInsuranceRate" id="PolicyForm_EmployerSocialInsuranceRate" value="@Model.PolicyForm.EmployerSocialInsuranceRate.ToString("0.################", System.Globalization.CultureInfo.InvariantCulture)" required /></label>
+                    <label>NSDLĐ - BHYT<input class="form-control" type="text" inputmode="decimal" data-decimal-input name="PolicyForm.EmployerHealthInsuranceRate" id="PolicyForm_EmployerHealthInsuranceRate" value="@Model.PolicyForm.EmployerHealthInsuranceRate.ToString("0.################", System.Globalization.CultureInfo.InvariantCulture)" required /></label>
+                    <label>NSDLĐ - BHTN<input class="form-control" type="text" inputmode="decimal" data-decimal-input name="PolicyForm.EmployerUnemploymentInsuranceRate" id="PolicyForm_EmployerUnemploymentInsuranceRate" value="@Model.PolicyForm.EmployerUnemploymentInsuranceRate.ToString("0.################", System.Globalization.CultureInfo.InvariantCulture)" required /></label>
                 </div>
-                <div class="table-wrap salary-bracket-editor"><table class="data-table"><thead><tr><th>Bậc</th><th>Giới hạn trên (để trống ở bậc cuối)</th><th>Tỷ lệ (0.05 = 5%)</th><th>Tên</th></tr></thead><tbody>@for (var index = 0; index < Model.PolicyForm.TaxBrackets.Count; index++) { <tr><td><input type="hidden" asp-for="PolicyForm.TaxBrackets[index].Sequence" />@Model.PolicyForm.TaxBrackets[index].Sequence</td><td><input class="form-control" type="number" step="0.01" min="0" asp-for="PolicyForm.TaxBrackets[index].UpperLimit" /></td><td><input class="form-control" type="number" step="0.001" min="0" max="1" asp-for="PolicyForm.TaxBrackets[index].Rate" /></td><td><input class="form-control" asp-for="PolicyForm.TaxBrackets[index].Name" /></td></tr> }</tbody></table></div>
+                <div class="table-wrap salary-bracket-editor"><table class="data-table"><thead><tr><th>Bậc</th><th>Giới hạn trên (để trống ở bậc cuối)</th><th>Tỷ lệ (0,05 = 5%)</th><th>Tên</th></tr></thead><tbody>@for (var index = 0; index < Model.PolicyForm.TaxBrackets.Count; index++) { <tr><td><input type="hidden" asp-for="PolicyForm.TaxBrackets[index].Sequence" />@Model.PolicyForm.TaxBrackets[index].Sequence</td><td><input class="form-control" type="text" inputmode="decimal" data-decimal-input name="PolicyForm.TaxBrackets[@index].UpperLimit" id="PolicyForm_TaxBrackets_@(index)__UpperLimit" value="@(Model.PolicyForm.TaxBrackets[index].UpperLimit?.ToString("#,##0.################", System.Globalization.CultureInfo.GetCultureInfo("vi-VN")) ?? string.Empty)" /></td><td><input class="form-control" type="text" inputmode="decimal" data-decimal-input name="PolicyForm.TaxBrackets[@index].Rate" id="PolicyForm_TaxBrackets_@(index)__Rate" value="@Model.PolicyForm.TaxBrackets[index].Rate.ToString("0.################", System.Globalization.CultureInfo.GetCultureInfo("vi-VN"))" /></td><td><input class="form-control" name="PolicyForm.TaxBrackets[@index].Name" id="PolicyForm_TaxBrackets_@(index)__Name" value="@Model.PolicyForm.TaxBrackets[index].Name" /></td></tr> }</tbody></table></div>
                 <button class="btn btn-primary" type="submit">Lưu phiên bản policy</button>
             </form>
         </div>
@@ -128,10 +135,80 @@
     const table = document.getElementById('employee-table');
     const bulkModal = document.getElementById('bulk-salary-modal');
     const bulkForm = document.querySelector('[data-bulk-salary-form]');
+    const componentForm = document.querySelector('#salary-component-modal form');
     const drawerHost = document.getElementById('employee-salary-drawer-host');
     const notification = document.getElementById('employee-salary-notification');
     const deleteModal = document.getElementById('salary-delete-modal');
+    const policyForm = document.querySelector('.salary-policy-form');
     if (!root || !table || !bulkForm) return;
+
+    const parseDecimal = input => {
+        const text = String(input ?? '').trim().replace(/\s/g, '');
+        if (!text) return null;
+        const hasComma = text.includes(',');
+        const hasPeriod = text.includes('.');
+        let normalized = text;
+        if (hasComma && hasPeriod) {
+            normalized = text.lastIndexOf(',') > text.lastIndexOf('.')
+                ? text.replace(/\./g, '').replace(',', '.')
+                : text.replace(/,/g, '');
+        } else if (hasComma && /,\d{3}(,|$)/.test(text)) {
+            normalized = text.replace(/,/g, '');
+        } else if (hasComma) {
+            normalized = text.replace(',', '.');
+        } else if (/^-?\d{1,3}(\.\d{3})+$/.test(text)) {
+            normalized = text.replace(/\./g, '');
+        }
+        const value = Number(normalized);
+        return Number.isFinite(value) ? value : NaN;
+    };
+
+    const formatDecimal = value => new Intl.NumberFormat('en-US', { maximumFractionDigits: 12, useGrouping: true }).format(value);
+
+    const localizeDecimalInputs = container => {
+        if (!container) return;
+        container.querySelectorAll('[data-decimal-input]').forEach(input => {
+            const value = parseDecimal(input.value);
+            if (value !== null && Number.isFinite(value)) {
+                input.value = formatDecimal(value);
+            }
+        });
+    };
+
+    const attachThousandsFormatting = container => {
+        if (!container) return;
+        container.addEventListener('input', event => {
+            const input = event.target.closest('[data-decimal-input]');
+            if (!input) return;
+            const value = parseDecimal(input.value);
+            if (value !== null && Number.isFinite(value)) input.value = formatDecimal(value);
+        });
+    };
+
+    const normalizeDecimalInputs = form => {
+        for (const input of form.querySelectorAll('[data-decimal-input]')) {
+            const value = parseDecimal(input.value);
+            if (value === null && input.hasAttribute('data-decimal-optional')) continue;
+            if (value === null || !Number.isFinite(value)) {
+                input.setCustomValidity('Vui lòng nhập số hợp lệ, ví dụ 0,1 hoặc 1.234,56.');
+                input.reportValidity();
+                input.setCustomValidity('');
+                return false;
+            }
+            input.value = String(value);
+        }
+        return true;
+    };
+
+    localizeDecimalInputs(root);
+    localizeDecimalInputs(document.getElementById('salary-component-modal'));
+
+    policyForm?.addEventListener('submit', event => {
+        if (!normalizeDecimalInputs(policyForm)) event.preventDefault();
+    });
+    componentForm?.addEventListener('submit', event => {
+        if (!normalizeDecimalInputs(componentForm)) event.preventDefault();
+    });
 
     const token = () => document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
     const rows = () => [...table.querySelectorAll('[data-employee-row]')];
@@ -238,6 +315,8 @@
             const response = await fetch(`/EmployeeSalary/GetEmployeeSalaryConfig?employeeId=${openIndividual.dataset.openIndividualSalary}`, { credentials: 'same-origin' });
             if (!response.ok) { showMessage('Không thể tải cấu hình lương cá nhân.', false); return; }
             drawerHost.innerHTML = await response.text();
+            localizeDecimalInputs(drawerHost);
+            attachThousandsFormatting(drawerHost);
             return;
         }
     });
@@ -273,7 +352,11 @@
         const form = select.closest('[data-individual-salary-form]');
         const employeeId = form.querySelector('[name="EmployeeId"]').value;
         const response = await fetch(`/EmployeeSalary/GetEmployeeSalaryConfig?employeeId=${employeeId}&templateId=${select.value}`, { credentials: 'same-origin' });
-        if (response.ok) drawerHost.innerHTML = await response.text();
+        if (response.ok) {
+            drawerHost.innerHTML = await response.text();
+            localizeDecimalInputs(drawerHost);
+            attachThousandsFormatting(drawerHost);
+        }
     });
 
     drawerHost.addEventListener('submit', async event => {
@@ -283,13 +366,17 @@
         const data = new FormData(form);
         const components = [...form.querySelectorAll('[data-component-id]')].map(row => ({
             componentId: Number(row.dataset.componentId),
-            amount: row.querySelector('[data-component-amount]').value === '' ? null : Number(row.querySelector('[data-component-amount]').value),
+            amount: parseDecimal(row.querySelector('[data-component-amount]').value),
             formula: row.querySelector('[data-component-formula]').value || null
         }));
+        if (components.some(component => Number.isNaN(component.amount))) {
+            showMessage('Số tiền không hợp lệ. Dùng dấu phẩy cho phần thập phân, ví dụ 1.234,56.', false);
+            return;
+        }
         const response = await fetch('/EmployeeSalary/SaveEmployeeSalary', {
             method: 'POST', credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': form.querySelector('[name="__RequestVerificationToken"]').value },
-            body: JSON.stringify({ employeeId: Number(data.get('EmployeeId')), salaryTemplateId: Number(data.get('SalaryTemplateId')), effectiveDate: data.get('EffectiveDate'), components })
+            body: JSON.stringify({ employeeId: Number(data.get('EmployeeId')), salaryTemplateId: Number(data.get('SalaryTemplateId')), effectiveDate: data.get('EffectiveDate'), isCasualIncome: data.get('IsCasualIncome') === 'on', components })
         });
         const result = await readJson(response);
         if (response.ok && result.success) {
@@ -310,7 +397,7 @@
         <input type="hidden" name="ActiveTab" value="global" />
         <input type="hidden" name="ActiveSubtab" value="components" />
         <div class="section-head"><h3>Thêm thành phần lương</h3><button type="button" class="btn btn-secondary" data-close-salary-modal onclick="document.getElementById('salary-component-modal').hidden = true">Đóng</button></div>
-        <div class="grid grid-3"><label>Mã<input class="form-control" asp-for="ComponentForm.Code" required /></label><label>Tên khoản<input class="form-control" asp-for="ComponentForm.Name" required /></label><label>Loại<input class="form-control" asp-for="ComponentForm.Category" /></label><label>Cách tính<input class="form-control" asp-for="ComponentForm.CalculationType" /></label><label>Thuế<input class="form-control" asp-for="ComponentForm.TaxTreatment" /></label><label>Bảo hiểm<input class="form-control" asp-for="ComponentForm.InsuranceTreatment" /></label><label>Trần miễn thuế<input class="form-control" type="number" asp-for="ComponentForm.TaxExemptLimit" /></label></div>
+                <div class="grid grid-3"><label>Mã<input class="form-control" asp-for="ComponentForm.Code" required /></label><label>Tên khoản<input class="form-control" asp-for="ComponentForm.Name" required /></label><label>Loại<input class="form-control" asp-for="ComponentForm.Category" /></label><label>Cách tính<input class="form-control" asp-for="ComponentForm.CalculationType" /></label><label>Thuế<input class="form-control" asp-for="ComponentForm.TaxTreatment" /></label><label>Bảo hiểm<input class="form-control" asp-for="ComponentForm.InsuranceTreatment" /></label><label>Trần miễn thuế<input class="form-control" type="text" inputmode="decimal" data-decimal-input data-decimal-optional asp-for="ComponentForm.TaxExemptLimit" /></label></div>
         <button class="btn btn-primary" type="submit">Lưu thành phần</button>
     </form>
 </div>

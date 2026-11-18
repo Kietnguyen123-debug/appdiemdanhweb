@@ -19,6 +19,7 @@ BEGIN
 		EffectiveDate DATE NOT NULL,
 		EndDate DATE NULL,
 		Status NVARCHAR(30) NOT NULL CONSTRAINT DF_EmployeeSalaries_Status DEFAULT (N'Active'),
+		IsCasualIncome BIT NOT NULL CONSTRAINT DF_EmployeeSalaries_IsCasualIncome DEFAULT (0),
 		Reason NVARCHAR(1000) NULL,
 		CreatedBy INT NOT NULL,
 		ApprovedBy INT NULL,
@@ -34,6 +35,9 @@ BEGIN
 END;
 ELSE
 	PRINT 'EXISTS TABLE: dbo.EmployeeSalaries';
+
+IF COL_LENGTH(N'dbo.EmployeeSalaries', N'IsCasualIncome') IS NULL
+	ALTER TABLE dbo.EmployeeSalaries ADD IsCasualIncome BIT NOT NULL CONSTRAINT DF_EmployeeSalaries_IsCasualIncome DEFAULT (0);
 
 IF OBJECT_ID(N'dbo.EmployeeSalaryDetails', N'U') IS NULL
 BEGIN

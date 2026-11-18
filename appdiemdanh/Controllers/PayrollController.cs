@@ -32,15 +32,10 @@ namespace AppDiemDanh.Controllers
         [ProducesResponseType(typeof(PayrollPolicyResponse), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetActivePayrollPolicy([FromQuery] DateTime? payPeriodDate = null)
         {
-            try
-            {
-                var policy = await _payrollPolicyService.GetActivePolicy(payPeriodDate?.Date ?? DateTime.Today);
-                return Ok(ToPolicyResponse(policy));
-            }
-            catch (InvalidOperationException exception)
-            {
-                return NotFound(new { message = exception.Message });
-            }
+            var policy = await _payrollPolicyService.GetActivePolicy(payPeriodDate?.Date ?? DateTime.Today);
+            return policy == null
+                ? NotFound(new { message = $"Chưa có chính sách Thuế/BHXH hiệu lực cho ngày {(payPeriodDate?.Date ?? DateTime.Today):yyyy-MM-dd}." })
+                : Ok(ToPolicyResponse(policy));
         }
 
         [Authorize(Roles = "Admin,HR")]
@@ -104,6 +99,7 @@ namespace AppDiemDanh.Controllers
             try { return Ok(await _payrollService.CalculateMonthlyPayslipAsync(employeeId, month, year, standardWorkDays)); }
             catch (KeyNotFoundException exception) { return NotFound(exception.Message); }
             catch (ArgumentException exception) { return BadRequest(exception.Message); }
+            catch (PayrollPolicyUnavailableException exception) { return Conflict(new { message = exception.Message }); }
         }
 
         /// <summary>
@@ -119,11 +115,15 @@ namespace AppDiemDanh.Controllers
             var employees = await _context.Employees.Where(e => e.IsActive).ToListAsync();
             var payrollList = new System.Collections.Generic.List<PayslipResponse>();
 
-            foreach (var emp in employees)
+            try
             {
-                var payslip = await _payrollService.CalculateMonthlyPayslipAsync(emp.Id, month, year, standardWorkDays);
-                payrollList.Add(payslip);
+                foreach (var emp in employees)
+                {
+                    var payslip = await _payrollService.CalculateMonthlyPayslipAsync(emp.Id, month, year, standardWorkDays);
+                    payrollList.Add(payslip);
+                }
             }
+            catch (PayrollPolicyUnavailableException exception) { return Conflict(new { message = exception.Message }); }
 
             return Ok(new MonthlyPayrollSummaryResponse { Items = payrollList });
         }
@@ -151,6 +151,10 @@ namespace AppDiemDanh.Controllers
             catch (ArgumentException exception)
             {
                 return BadRequest(new { message = exception.Message });
+            }
+            catch (PayrollPolicyUnavailableException exception)
+            {
+                return Conflict(new { message = exception.Message });
             }
         }
 

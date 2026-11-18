@@ -32,7 +32,7 @@
                         <td><strong>@component.Name</strong></td>
                         <td>@component.Category</td>
                         <td>@component.CalculationType</td>
-                        <td><input class="form-control" type="number" step="0.01" min="0" data-default-value value="@(component.DefaultValue?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty)" /></td>
+                        <td><input class="form-control" type="text" inputmode="decimal" data-thousands-input data-default-value value="@(component.DefaultValue?.ToString("0.################", System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty)" /></td>
                         <td><input class="form-control" type="text" maxlength="2000" data-formula value="@component.Formula" /></td>
                     </tr>
                 }
@@ -53,6 +53,26 @@
     const notification = document.getElementById('save-notification');
     const token = form.querySelector('input[name="__RequestVerificationToken"]').value;
 
+    const formatInput = input => {
+        const value = input.value.replace(/,/g, '');
+        const match = value.match(/^(\d*)(?:\.(\d*))?$/);
+        if (!match) return;
+        const integer = match[1].replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        input.value = `${integer}${value.includes('.') ? `.${match[2] ?? ''}` : ''}`;
+    };
+
+    const parseInput = input => {
+        const value = input.value.replace(/,/g, '');
+        if (!value) return null;
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : NaN;
+    };
+
+    form.querySelectorAll('[data-thousands-input]').forEach(input => {
+        formatInput(input);
+        input.addEventListener('input', () => formatInput(input));
+    });
+
     function showNotification(message, success) {
         notification.textContent = message;
         notification.className = `alert ${success ? 'alert-success' : 'alert-danger'}`;
@@ -64,10 +84,14 @@
         const components = [...form.querySelectorAll('[data-component-row]')].map(row => ({
             componentId: Number(row.dataset.componentId),
             selected: row.querySelector('[data-selected]').checked,
-            defaultValue: row.querySelector('[data-default-value]').value === ''
-                ? null : Number(row.querySelector('[data-default-value]').value),
+            defaultValue: parseInput(row.querySelector('[data-default-value]')),
             formula: row.querySelector('[data-formula]').value || null
         }));
+
+        if (components.some(component => Number.isNaN(component.defaultValue))) {
+            showNotification('Giá trị mặc định không hợp lệ. Dùng dấu chấm cho phần thập phân, ví dụ 1,500,000.25.', false);
+            return;
+        }
 
         const button = form.querySelector('button[type="submit"]');
         button.disabled = true;

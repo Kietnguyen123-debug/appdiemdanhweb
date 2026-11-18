@@ -19,19 +19,28 @@ public class PayrollService : IPayrollService
     private readonly IFcmService _fcmService;
     private readonly ILatePenaltyService _latePenaltyService;
     private readonly ILogger<PayrollService> _logger;
+    private readonly PayrollCalculationEngine _payrollCalculationEngine;
+    private readonly IHybridScheduleService _hybridScheduleService;
+    private readonly PayrollWorkdayCalculator _payrollWorkdayCalculator;
 
     public PayrollService(
         AppDbContext context,
         IPayrollPolicyService payrollPolicyService,
         IFcmService fcmService,
         ILatePenaltyService latePenaltyService,
-        ILogger<PayrollService> logger)
+        ILogger<PayrollService> logger,
+        PayrollCalculationEngine payrollCalculationEngine,
+        IHybridScheduleService hybridScheduleService,
+        PayrollWorkdayCalculator payrollWorkdayCalculator)
     {
         _context = context;
         _payrollPolicyService = payrollPolicyService;
         _fcmService = fcmService;
         _latePenaltyService = latePenaltyService;
         _logger = logger;
+        _payrollCalculationEngine = payrollCalculationEngine;
+        _hybridScheduleService = hybridScheduleService;
+        _payrollWorkdayCalculator = payrollWorkdayCalculator;
     }
 
     public async Task<PayslipResponse> CalculateMonthlyPayslipAsync(int employeeId, int month, int year, int standardWorkDays)
@@ -202,15 +211,16 @@ public class PayrollService : IPayrollService
     {
         var startDate = new DateTime(year, month, 1);
         var endDate = startDate.AddMonths(1);
-        var policy = await _payrollPolicyService.GetActivePolicy(startDate);
+        var policy = await _payrollPolicyService.GetActivePolicy(startDate)
+            ?? throw new PayrollPolicyUnavailableException(startDate);
 
-        var salaryConfig = await _context.EmployeeSalaryConfigs.AsNoTracking()
+        var legacySalaryConfig = await _context.EmployeeSalaryConfigs.AsNoTracking()
             .Where(x => x.EmployeeId == employee.Id && x.EffectiveFrom <= startDate &&
                         (x.EffectiveTo == null || x.EffectiveTo >= startDate))
             .OrderByDescending(x => x.EffectiveFrom)
             .FirstOrDefaultAsync();
 
-        salaryConfig ??= new EmployeeSalaryConfig
+        legacySalaryConfig ??= new EmployeeSalaryConfig
         {
             EmployeeId = employee.Id,
             BaseSalary = employee.BaseSalary,
@@ -222,6 +232,17 @@ public class PayrollService : IPayrollService
             EffectiveFrom = DateTime.MinValue,
             IsActive = true
         };
+
+        var salaryRevision = await _context.EmployeeSalaries.AsNoTracking()
+            .Where(x => x.EmployeeId == employee.Id && x.Status == "Active" && x.EffectiveDate <= startDate &&
+                        (x.EndDate == null || x.EndDate >= startDate))
+            .OrderByDescending(x => x.EffectiveDate)
+            .Include(x => x.Details)
+                .ThenInclude(x => x.SalaryComponent)
+            .Include(x => x.SalaryTemplate)
+                .ThenInclude(x => x!.Details)
+                    .ThenInclude(x => x.SalaryComponent)
+            .FirstOrDefaultAsync();
 
         var attendances = await _context.Attendances.AsNoTracking()
             .Where(x => x.EmployeeId == employee.Id && x.WorkDate >= startDate && x.WorkDate < endDate)
@@ -235,44 +256,95 @@ public class PayrollService : IPayrollService
             .Where(x => x.EmployeeId == employee.Id && x.RequestDate >= startDate && x.RequestDate < endDate && x.Status == "Approved")
             .SumAsync(x => (decimal?)x.Amount) ?? 0;
 
-        decimal actualWorkDays = attendances.Count(x => x.CheckInTime != default);
         var paidLeaveRequests = await _context.LeaveRequests.AsNoTracking()
             .Where(x => x.EmployeeId == employee.Id && x.Status == "APPROVED" && x.IsPaidLeave &&
                         x.StartDate < endDate && x.EndDate >= startDate)
-            .Select(x => new { x.StartDate, x.EndDate })
+            .Select(x => new { x.StartDate, x.EndDate, x.IsPaidLeave })
             .ToListAsync();
 
-        decimal paidLeaveDays = paidLeaveRequests.Sum(x =>
+        var roster = await _hybridScheduleService.ResolveAsync(new RosterQuery { From = startDate, To = endDate.AddDays(-1) });
+        var resolvedWorkDates = roster.Employees.FirstOrDefault(x => x.EmployeeId == employee.Id)?.Days
+            .Where(x => x.ShiftId.HasValue)
+            .Select(x => x.WorkDate)
+            .ToList() ?? [];
+        IEnumerable<DateTime> scheduledWorkDates = resolvedWorkDates.Count == 0
+            ? _payrollWorkdayCalculator.CreateLegacyWeekdaySchedule(startDate, endDate.AddDays(-1))
+            : resolvedWorkDates;
+        var holidayDates = await _context.PayrollHolidays.AsNoTracking()
+            .Where(x => x.IsActive && x.HolidayDate >= startDate && x.HolidayDate < endDate)
+            .Select(x => x.HolidayDate)
+            .ToListAsync();
+        var workdays = _payrollWorkdayCalculator.Calculate(
+            scheduledWorkDates,
+            attendances.Where(x => x.CheckInTime != default).Select(x => x.WorkDate),
+            paidLeaveRequests.Select(x => new PayrollLeavePeriod(x.StartDate, x.EndDate, x.IsPaidLeave)),
+            holidayDates);
+        decimal actualWorkDays = workdays.ActualWorkDays;
+        decimal paidLeaveDays = workdays.PaidLeaveDays;
+        decimal totalInsuranceDays = workdays.TotalInsuranceDays;
+        var approvedOvertime = overtime;
+        var componentInputs = ResolveSalaryComponents(salaryRevision, legacySalaryConfig);
+        var formulaVariables = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase)
         {
-            var from = x.StartDate.Date < startDate ? startDate : x.StartDate.Date;
-            var to = x.EndDate.Date >= endDate ? endDate.AddDays(-1) : x.EndDate.Date;
-            return to >= from ? (decimal)(to - from).TotalDays + 1 : 0m;
-        });
-
-        decimal totalInsuranceDays = actualWorkDays + paidLeaveDays;
+            ["BASE_SALARY"] = legacySalaryConfig.BaseSalary,
+            ["SALARY_BASE"] = legacySalaryConfig.BaseSalary,
+            ["ACTUAL_WORK_DAYS"] = actualWorkDays,
+            ["PAID_LEAVE_DAYS"] = paidLeaveDays,
+            ["SYS_WORKING_DAYS"] = standardWorkDays,
+            ["STANDARD_WORK_DAYS"] = standardWorkDays,
+            ["OT_HOURS"] = approvedOvertime.Sum(x => (decimal)x.Hours)
+        };
+        var evaluatedComponents = _payrollCalculationEngine.EvaluateComponents(componentInputs, formulaVariables);
+        var earningComponents = evaluatedComponents.Where(x => string.Equals(x.Definition.Category, "Earning", StringComparison.OrdinalIgnoreCase)).ToList();
+        var baseSalary = earningComponents.FirstOrDefault(x => string.Equals(x.Definition.Code, "SALARY_BASE", StringComparison.OrdinalIgnoreCase))?.Amount
+                         ?? legacySalaryConfig.BaseSalary;
+        var totalAllowances = salaryRevision == null
+            ? legacySalaryConfig.TotalAllowances
+            : earningComponents.Where(x => !string.Equals(x.Definition.Code, "SALARY_BASE", StringComparison.OrdinalIgnoreCase)).Sum(x => x.Amount);
         bool subjectToInsurance = totalInsuranceDays >= 14m;
-        decimal insuranceBase = Math.Clamp(salaryConfig.InsuranceSalary, policy.ReferenceInsuranceSalary, policy.InsuranceCeiling);
+        decimal configuredInsuranceSalary = salaryRevision == null
+            ? legacySalaryConfig.InsuranceSalary
+            : earningComponents.Where(x => string.Equals(x.Definition.InsuranceTreatment, "Included", StringComparison.OrdinalIgnoreCase)).Sum(x => x.Amount);
+        decimal insuranceBase = Math.Clamp(configuredInsuranceSalary, policy.ReferenceInsuranceSalary, policy.InsuranceCeiling);
         decimal employeeInsuranceRate = policy.EmployeeSocialInsuranceRate + policy.EmployeeHealthInsuranceRate + policy.EmployeeUnemploymentInsuranceRate;
         decimal employerInsuranceRate = policy.EmployerSocialInsuranceRate + policy.EmployerHealthInsuranceRate + policy.EmployerUnemploymentInsuranceRate;
         decimal employeeInsurance = subjectToInsurance ? Math.Round(insuranceBase * employeeInsuranceRate, 0) : 0m;
         decimal employerInsurance = subjectToInsurance ? Math.Round(insuranceBase * employerInsuranceRate, 0) : 0m;
 
-        decimal dailyRate = salaryConfig.BaseSalary / standardWorkDays;
-        decimal actualSalary = Math.Round(dailyRate * actualWorkDays, 0);
+        decimal dailyRate = baseSalary / standardWorkDays;
+        decimal actualSalary = Math.Round(dailyRate * (actualWorkDays + paidLeaveDays), 0);
         decimal hourlyRate = dailyRate / 8m;
         decimal overtimeSalary = Math.Round(overtime.Sum(x => (decimal)x.Hours * (decimal)x.Multiplier * hourlyRate), 0);
         decimal overtimeOriginal = Math.Round(overtime.Sum(x => (decimal)x.Hours * hourlyRate), 0);
         decimal overtimeExempt = Math.Max(0, overtimeSalary - overtimeOriginal);
 
-        decimal taxableIncome = Math.Max(0, actualSalary + salaryConfig.TotalAllowances + overtimeOriginal -
-            policy.PersonalDeduction - (policy.DependentDeduction * salaryConfig.DependentCount) - employeeInsurance);
-        var taxDetails = CalculateTax(taxableIncome, policy.TaxBrackets);
+        decimal taxableGross = earningComponents.Sum(component =>
+        {
+            var amount = string.Equals(component.Definition.Code, "SALARY_BASE", StringComparison.OrdinalIgnoreCase)
+                ? actualSalary
+                : component.Amount;
+            return _payrollCalculationEngine.CalculateTaxableAmount(component, amount, policy.MealTaxExemptLimit);
+        }) + overtimeOriginal;
+        decimal componentDeductions = evaluatedComponents
+            .Where(x => string.Equals(x.Definition.Category, "Deduction", StringComparison.OrdinalIgnoreCase))
+            .Sum(x => x.Amount);
+        bool isCasualIncome = salaryRevision?.IsCasualIncome == true;
+        decimal taxableIncome = isCasualIncome
+            ? taxableGross
+            : Math.Max(0, taxableGross - policy.PersonalDeduction - (policy.DependentDeduction * legacySalaryConfig.DependentCount) - employeeInsurance);
+        var taxDetails = isCasualIncome
+            ? new PayrollTaxCalculation(
+                _payrollCalculationEngine.CalculateCasualWithholding(taxableGross, policy.CasualIncomeWithholdingThreshold, policy.CasualIncomeWithholdingRate),
+                Array.Empty<ProgressiveTaxBracketDto>())
+            : _payrollCalculationEngine.CalculateProgressiveTax(taxableIncome, policy.TaxBrackets
+                .OrderBy(x => x.Sequence)
+                .Select(x => new PayrollTaxBracketInput(x.UpperLimit, x.Rate, x.Name)));
 
         decimal penalty = 0m;
         foreach (var attendance in attendances.Where(x => x.LateMinutes > 0))
             penalty += await _latePenaltyService.CalculatePenaltyAmountAsync(attendance.LateMinutes);
 
-        decimal net = actualSalary + overtimeSalary + salaryConfig.TotalAllowances - employeeInsurance - taxDetails.Tax - advances - penalty;
+        decimal net = actualSalary + overtimeSalary + totalAllowances - employeeInsurance - taxDetails.Tax - componentDeductions - advances - penalty;
 
         return new PayslipResponse
         {
@@ -281,13 +353,13 @@ public class PayrollService : IPayrollService
             FullName = employee.FullName,
             Month = month,
             Year = year,
-            BaseSalary = salaryConfig.BaseSalary,
-            Allowance = salaryConfig.TotalAllowances,
+            BaseSalary = baseSalary,
+            Allowance = totalAllowances,
             StandardWorkDays = standardWorkDays,
             ActualWorkDays = actualWorkDays,
             TotalLateMinutes = attendances.Sum(x => x.LateMinutes),
             TotalPenalty = penalty,
-            GrossSalary = actualSalary + overtimeSalary + salaryConfig.TotalAllowances,
+            GrossSalary = actualSalary + overtimeSalary + totalAllowances,
             OvertimeSalary = overtimeSalary,
             OvertimeTaxExemptAmount = overtimeExempt,
             InsuranceBase = insuranceBase,
@@ -297,40 +369,73 @@ public class PayrollService : IPayrollService
             TotalInsuranceDays = totalInsuranceDays,
             SubjectToInsurance = subjectToInsurance,
             TaxableIncome = taxableIncome,
+            IsCasualIncome = isCasualIncome,
             PersonalDeduction = policy.PersonalDeduction,
-            DependentDeduction = policy.DependentDeduction * salaryConfig.DependentCount,
-            DependentCount = salaryConfig.DependentCount,
+            DependentDeduction = policy.DependentDeduction * legacySalaryConfig.DependentCount,
+            DependentCount = legacySalaryConfig.DependentCount,
             Pit = taxDetails.Tax,
+            ComponentDeductions = componentDeductions,
             SalaryAdvanceDeduction = advances,
             NetSalary = net,
             TaxBrackets = taxDetails.Brackets,
             PolicyEffectiveDate = policy.EffectiveDate,
 
             // Trả về thông tin thanh toán cho Bảng lương & Excel Export
-            PaymentMethod = salaryConfig.PaymentMethod ?? "BankTransfer",
-            BankName = salaryConfig.BankName,
-            BankAccountNo = salaryConfig.BankAccountNo,
-            BankAccountHolder = string.IsNullOrWhiteSpace(salaryConfig.BankAccountHolder) ? employee.FullName : salaryConfig.BankAccountHolder
+            PaymentMethod = legacySalaryConfig.PaymentMethod ?? "BankTransfer",
+            BankName = legacySalaryConfig.BankName,
+            BankAccountNo = legacySalaryConfig.BankAccountNo,
+            BankAccountHolder = string.IsNullOrWhiteSpace(legacySalaryConfig.BankAccountHolder) ? employee.FullName : legacySalaryConfig.BankAccountHolder
         };
     }
 
-    private static (decimal Tax, List<ProgressiveTaxBracketDto> Brackets) CalculateTax(decimal income, IEnumerable<PayrollTaxBracket> policyBrackets)
+    private static IReadOnlyList<PayrollComponentInput> ResolveSalaryComponents(EmployeeSalary? salaryRevision, EmployeeSalaryConfig legacySalaryConfig)
     {
-        var result = new List<ProgressiveTaxBracketDto>();
-        decimal previous = 0, total = 0;
-        foreach (var bracket in policyBrackets.OrderBy(x => x.Sequence))
+        if (salaryRevision == null)
         {
-            decimal upperLimit = bracket.UpperLimit ?? decimal.MaxValue;
-            decimal amount = Math.Max(0, Math.Min(income, upperLimit) - previous);
-            if (amount > 0)
-            {
-                var tax = Math.Round(amount * bracket.Rate, 0);
-                result.Add(new ProgressiveTaxBracketDto { Bracket = bracket.Name, TaxableAmount = amount, Rate = bracket.Rate, TaxAmount = tax });
-                total += tax;
-            }
-            if (income <= upperLimit) break;
-            previous = upperLimit;
+            return
+            [
+                new("SALARY_BASE", "Lương cơ bản", "Earning", "Manual", null, "Taxable", null, "Included", legacySalaryConfig.BaseSalary),
+                new("LEGACY_ALLOWANCE", "Phụ cấp", "Earning", "Fixed", null, "Taxable", null, "Excluded", legacySalaryConfig.TotalAllowances)
+            ];
         }
-        return (total, result);
+
+        var assignedDetails = salaryRevision.Details.ToDictionary(x => x.SalaryComponentId);
+        var templateDetails = salaryRevision.SalaryTemplate?.Details ?? [];
+        var components = templateDetails.Select(templateDetail =>
+        {
+            var component = templateDetail.SalaryComponent ?? throw new InvalidOperationException("Mẫu lương có thành phần không tồn tại trong catalog.");
+            assignedDetails.TryGetValue(templateDetail.SalaryComponentId, out var assignedDetail);
+            var formula = assignedDetail?.Formula ?? templateDetail.Formula ?? component.Formula;
+            var amount = assignedDetail?.Amount ?? templateDetail.DefaultValue;
+            if (amount == null && string.Equals(component.Code, "SALARY_BASE", StringComparison.OrdinalIgnoreCase))
+                amount = legacySalaryConfig.BaseSalary;
+
+            var calculationType = formula == null ? component.CalculationType : "Formula";
+            return new PayrollComponentInput(component.Code, component.Name, component.Category, calculationType, formula,
+                component.TaxTreatment, component.TaxExemptLimit, component.InsuranceTreatment, amount);
+        }).ToList();
+
+        foreach (var assignedDetail in salaryRevision.Details.Where(x => !templateDetails.Any(t => t.SalaryComponentId == x.SalaryComponentId)))
+        {
+            var component = assignedDetail.SalaryComponent ?? throw new InvalidOperationException("Cấu hình lương có thành phần không tồn tại trong catalog.");
+            var formula = assignedDetail.Formula ?? component.Formula;
+            components.Add(new PayrollComponentInput(component.Code, component.Name, component.Category,
+                formula == null ? component.CalculationType : "Formula", formula, component.TaxTreatment,
+                component.TaxExemptLimit, component.InsuranceTreatment, assignedDetail.Amount));
+        }
+
+        return components.Where(x =>
+            !string.Equals(x.Category, "Deduction", StringComparison.OrdinalIgnoreCase) ||
+            (!string.Equals(x.Code, "INSURANCE_EMP", StringComparison.OrdinalIgnoreCase) &&
+             !string.Equals(x.Code, "PERSONAL_TAX", StringComparison.OrdinalIgnoreCase))).ToList();
+    }
+
+}
+
+public sealed class PayrollPolicyUnavailableException : InvalidOperationException
+{
+    public PayrollPolicyUnavailableException(DateTime payPeriodDate)
+        : base($"Chưa có chính sách Thuế/BHXH có hiệu lực cho kỳ lương bắt đầu ngày {payPeriodDate:yyyy-MM-dd}.")
+    {
     }
 }

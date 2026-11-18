@@ -19,6 +19,7 @@ public sealed class EmployeeSalaryRowViewModel
     public bool IsActive { get; init; }
     public long? SalaryId { get; init; }
     public long? SalaryTemplateId { get; init; }
+    public bool IsCasualIncome { get; init; }
     public string? SalaryTemplateName { get; init; }
 
     // Bổ sung hiển thị thông tin thanh toán trên bảng danh sách
@@ -58,6 +59,7 @@ public sealed class EmployeeSalaryDrawerViewModel
     public string FullName { get; init; } = string.Empty;
     public long? SalaryId { get; init; }
     public long? SalaryTemplateId { get; init; }
+    public bool IsCasualIncome { get; init; }
 
     // Bổ sung thông tin thanh toán khi mở Drawer xem/sửa
     public string PaymentMethod { get; init; } = "BankTransfer";
@@ -87,6 +89,7 @@ public sealed class SaveEmployeeSalaryRequest
     public long SalaryTemplateId { get; set; }
 
     public DateTime EffectiveDate { get; set; }
+    public bool IsCasualIncome { get; set; }
 
     // Bổ sung thông tin thanh toán khi gửi Form lưu từ Drawer
     public string PaymentMethod { get; set; } = "BankTransfer";

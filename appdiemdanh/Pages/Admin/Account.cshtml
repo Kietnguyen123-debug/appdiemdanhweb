@@ -1,0 +1,62 @@
+@page
+@model AppDiemDanh.Pages.Admin.AccountModel
+@{
+    ViewData["Title"] = "Thông tin tài khoản";
+}
+
+<div class="section-head">
+    <div>
+        <p class="eyebrow">TÀI KHOẢN CỦA TÔI</p>
+        <h1>Thông tin tài khoản</h1>
+        <p class="muted">Thông tin được cập nhật trực tiếp từ hệ thống.</p>
+    </div>
+</div>
+
+<div class="account-profile card">
+    <div class="account-profile-header">
+        <span class="account-avatar">@(Model.Account?.FullName.FirstOrDefault() ?? 'A')</span>
+        <div>
+            <h2>@Model.Account?.FullName</h2>
+            <p class="muted">@Model.Account?.Role · @Model.Account?.EmployeeCode</p>
+        </div>
+    </div>
+
+    <div class="account-details">
+        <div class="account-detail-item">
+            <span class="stat-label">Họ và tên</span>
+            <strong>@Model.Account?.FullName</strong>
+        </div>
+        <div class="account-detail-item">
+            <span class="stat-label">Mã nhân viên</span>
+            <strong>@Model.Account?.EmployeeCode</strong>
+        </div>
+        <div class="account-detail-item">
+            <span class="stat-label">Vai trò</span>
+            <strong>@Model.Account?.Role</strong>
+        </div>
+        <div class="account-detail-item">
+            <span class="stat-label">Xác minh email</span>
+            <strong>@(Model.Account?.Email ?? "Chưa cập nhật")</strong>
+        </div>
+        <div class="account-detail-item">
+            <span class="stat-label">Chi nhánh</span>
+            <strong>@(Model.Account?.BranchName ?? "Chưa xác định")</strong>
+        </div>
+        <div class="account-detail-item">
+            <span class="stat-label">Phòng ban</span>
+            <strong>@(Model.Account?.DepartmentName ?? "Chưa phân phòng ban")</strong>
+        </div>
+        <div class="account-detail-item">
+            <span class="stat-label">Trạng thái tài khoản</span>
+            <span class="badge badge-success">Đang hoạt động</span>
+        </div>
+        <div class="account-detail-item">
+            <span class="stat-label">Trạng thái kích hoạt</span>
+            <span class="badge @(Model.Account?.IsActivated == true ? "badge-success" : "badge-warning")">@(Model.Account?.IsActivated == true ? "Đã kích hoạt" : "Chưa kích hoạt")</span>
+        </div>
+        <div class="account-detail-item">
+            <span class="stat-label">Email</span>
+            <span class="badge @(Model.Account?.IsEmailVerified == true ? "badge-success" : "badge-warning")">@(Model.Account?.IsEmailVerified == true ? "Đã xác minh" : "Chưa xác minh")</span>
+        </div>
+    </div>
+</div>
